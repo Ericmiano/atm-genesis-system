@@ -1,5 +1,4 @@
-
-import { User, Transaction, AuditLog, ATMSession, FraudAlert, Bill } from '../types/atm';
+import { User, Transaction, AuditLog, ATMSession, FraudAlert, Bill, Loan, LoanPayment, AdminAction } from '../types/atm';
 
 class ATMService {
   private users: User[] = [];
@@ -7,6 +6,9 @@ class ATMService {
   private auditLogs: AuditLog[] = [];
   private sessions: ATMSession[] = [];
   private fraudAlerts: FraudAlert[] = [];
+  private loans: Loan[] = [];
+  private loanPayments: LoanPayment[] = [];
+  private adminActions: AdminAction[] = [];
   private currentSession: ATMSession | null = null;
 
   constructor() {
@@ -14,7 +16,7 @@ class ATMService {
   }
 
   private initializeSampleData() {
-    // Sample users with KES amounts
+    // Sample users with KES amounts and credit information
     this.users = [
       {
         id: '1',
@@ -27,6 +29,8 @@ class ATMService {
         isLocked: false,
         failedAttempts: 0,
         createdAt: new Date().toISOString(),
+        creditScore: 750,
+        monthlyIncome: 85000,
       },
       {
         id: '2',
@@ -39,6 +43,8 @@ class ATMService {
         isLocked: false,
         failedAttempts: 0,
         createdAt: new Date().toISOString(),
+        creditScore: 680,
+        monthlyIncome: 65000,
       },
       {
         id: 'admin',
@@ -51,6 +57,27 @@ class ATMService {
         isLocked: false,
         failedAttempts: 0,
         createdAt: new Date().toISOString(),
+      }
+    ];
+
+    // Sample loans
+    this.loans = [
+      {
+        id: 'loan_1',
+        userId: '1',
+        type: 'PERSONAL',
+        principal: 50000,
+        interestRate: 12.5,
+        termMonths: 12,
+        monthlyPayment: 4500,
+        totalAmount: 54000,
+        remainingBalance: 45000,
+        status: 'ACTIVE',
+        applicationDate: new Date(Date.now() - 2592000000).toISOString(), // 30 days ago
+        approvalDate: new Date(Date.now() - 2419200000).toISOString(), // 28 days ago
+        disbursementDate: new Date(Date.now() - 2419200000).toISOString(),
+        nextPaymentDate: new Date(Date.now() + 604800000).toISOString(), // 7 days from now
+        purpose: 'Business expansion',
       }
     ];
 
@@ -68,11 +95,12 @@ class ATMService {
       {
         id: '2',
         userId: '1',
-        type: 'DEPOSIT',
-        amount: 15000,
-        description: 'Cash deposit',
-        timestamp: new Date(Date.now() - 172800000).toISOString(),
-        status: 'SUCCESS'
+        type: 'LOAN_DISBURSEMENT',
+        amount: 50000,
+        description: 'Personal loan disbursement',
+        timestamp: new Date(Date.now() - 2419200000).toISOString(),
+        status: 'SUCCESS',
+        loanId: 'loan_1'
       }
     ];
   }
@@ -274,6 +302,137 @@ class ATMService {
     ];
   }
 
+  // Loan Application
+  async applyForLoan(
+    type: Loan['type'],
+    amount: number,
+    termMonths: number,
+    purpose: string,
+    collateral?: string
+  ): Promise<{ success: boolean; message: string; loanId?: string }> {
+    if (!this.currentSession || !this.currentSession.isActive) {
+      return { success: false, message: 'No active session' };
+    }
+
+    const user = this.getCurrentUser();
+    if (!user) return { success: false, message: 'User not found' };
+
+    if (amount <= 0 || amount > 500000) {
+      return { success: false, message: 'Invalid loan amount. Maximum loan is KES 500,000' };
+    }
+
+    if (termMonths < 1 || termMonths > 60) {
+      return { success: false, message: 'Loan term must be between 1 and 60 months' };
+    }
+
+    // Check credit eligibility
+    if (!user.creditScore || user.creditScore < 600) {
+      return { success: false, message: 'Credit score too low for loan approval' };
+    }
+
+    if (!user.monthlyIncome || (amount / termMonths) > (user.monthlyIncome * 0.4)) {
+      return { success: false, message: 'Loan amount exceeds affordable payment capacity' };
+    }
+
+    // Fraud detection for large loan amounts
+    if (amount > 200000) {
+      this.createFraudAlert(user.id, 'LARGE_LOAN_REQUEST', `Large loan application: KES ${amount.toLocaleString()}`);
+    }
+
+    const interestRate = this.calculateInterestRate(user.creditScore, type);
+    const monthlyPayment = this.calculateMonthlyPayment(amount, interestRate, termMonths);
+    const totalAmount = monthlyPayment * termMonths;
+
+    const loan: Loan = {
+      id: Math.random().toString(36).substr(2, 9),
+      userId: user.id,
+      type,
+      principal: amount,
+      interestRate,
+      termMonths,
+      monthlyPayment,
+      totalAmount,
+      remainingBalance: totalAmount,
+      status: 'PENDING',
+      applicationDate: new Date().toISOString(),
+      purpose,
+      collateral
+    };
+
+    this.loans.push(loan);
+    this.logAudit('LOAN_APPLICATION', `Applied for ${type} loan of KES ${amount.toLocaleString()}`, user.id);
+
+    return {
+      success: true,
+      message: `Loan application submitted successfully. Application ID: ${loan.id}`,
+      loanId: loan.id
+    };
+  }
+
+  // Loan Payment
+  async makePayment(loanId: string, amount: number): Promise<{ success: boolean; message: string; remainingBalance?: number }> {
+    if (!this.currentSession || !this.currentSession.isActive) {
+      return { success: false, message: 'No active session' };
+    }
+
+    const user = this.getCurrentUser();
+    if (!user) return { success: false, message: 'User not found' };
+
+    const loan = this.loans.find(l => l.id === loanId && l.userId === user.id);
+    if (!loan) return { success: false, message: 'Loan not found' };
+
+    if (loan.status !== 'ACTIVE') {
+      return { success: false, message: 'Loan is not active' };
+    }
+
+    if (amount <= 0) return { success: false, message: 'Invalid payment amount' };
+    if (amount > user.balance) return { success: false, message: 'Insufficient funds' };
+
+    // Calculate interest and principal portions
+    const monthlyInterest = (loan.remainingBalance * loan.interestRate / 100) / 12;
+    const principalPortion = Math.min(amount - monthlyInterest, loan.remainingBalance - monthlyInterest);
+    const interestPortion = amount - principalPortion;
+
+    loan.remainingBalance -= principalPortion;
+    user.balance -= amount;
+
+    if (loan.remainingBalance <= 0) {
+      loan.status = 'COMPLETED';
+      loan.remainingBalance = 0;
+    }
+
+    // Record payment
+    const payment: LoanPayment = {
+      id: Math.random().toString(36).substr(2, 9),
+      loanId,
+      amount,
+      paymentDate: new Date().toISOString(),
+      principalPortion,
+      interestPortion,
+      remainingBalance: loan.remainingBalance,
+      status: 'SUCCESS'
+    };
+
+    this.loanPayments.push(payment);
+    this.logTransaction(user.id, 'LOAN_PAYMENT', amount, `Loan payment for ${loanId}`, 'SUCCESS', undefined, undefined, loanId);
+    this.logAudit('LOAN_PAYMENT', `Made payment of KES ${amount.toLocaleString()} for loan ${loanId}`, user.id);
+
+    return {
+      success: true,
+      message: `Payment of KES ${amount.toLocaleString()} processed successfully`,
+      remainingBalance: loan.remainingBalance
+    };
+  }
+
+  // Get user loans
+  getUserLoans(): Loan[] {
+    if (!this.currentSession || !this.currentSession.isActive) {
+      return [];
+    }
+
+    return this.loans.filter(l => l.userId === this.currentSession!.userId);
+  }
+
   // Logout
   logout(): void {
     if (this.currentSession) {
@@ -293,6 +452,14 @@ class ATMService {
     return this.transactions;
   }
 
+  getAllLoans(): Loan[] {
+    return this.loans;
+  }
+
+  getAllLoanPayments(): LoanPayment[] {
+    return this.loanPayments;
+  }
+
   getAuditLogs(): AuditLog[] {
     return this.auditLogs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
   }
@@ -301,12 +468,108 @@ class ATMService {
     return this.fraudAlerts.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
   }
 
-  unlockAccount(userId: string): boolean {
+  getAdminActions(): AdminAction[] {
+    return this.adminActions.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  }
+
+  // Enhanced Admin Actions
+  unlockAccount(userId: string, reason?: string): boolean {
     const user = this.users.find(u => u.id === userId);
     if (user) {
       user.isLocked = false;
       user.failedAttempts = 0;
+      this.logAdminAction('UNLOCK_ACCOUNT', userId, undefined, `Account unlocked`, reason);
       this.logAudit('ACCOUNT_UNLOCKED', `Account unlocked by admin`, userId);
+      return true;
+    }
+    return false;
+  }
+
+  suspendUser(userId: string, reason: string): boolean {
+    const user = this.users.find(u => u.id === userId);
+    if (user && user.role !== 'ADMIN') {
+      user.isLocked = true;
+      this.logAdminAction('SUSPEND_USER', userId, undefined, `User suspended`, reason);
+      this.logAudit('USER_SUSPENDED', `User suspended by admin: ${reason}`, userId);
+      return true;
+    }
+    return false;
+  }
+
+  resetUserPin(userId: string, newPin: string, reason?: string): boolean {
+    const user = this.users.find(u => u.id === userId);
+    if (user && /^\d{4}$/.test(newPin)) {
+      user.pin = newPin;
+      user.failedAttempts = 0;
+      this.logAdminAction('RESET_PIN', userId, undefined, `PIN reset`, reason);
+      this.logAudit('PIN_RESET', `PIN reset by admin`, userId);
+      return true;
+    }
+    return false;
+  }
+
+  adjustUserBalance(userId: string, amount: number, reason: string): boolean {
+    const user = this.users.find(u => u.id === userId);
+    if (user) {
+      const oldBalance = user.balance;
+      user.balance += amount;
+      this.logAdminAction('ADJUST_BALANCE', userId, undefined, 
+        `Balance adjusted from KES ${oldBalance.toLocaleString()} to KES ${user.balance.toLocaleString()}`, reason);
+      this.logAudit('BALANCE_ADJUSTED', 
+        `Balance adjusted by KES ${amount.toLocaleString()} - Reason: ${reason}`, userId);
+      return true;
+    }
+    return false;
+  }
+
+  approveLoan(loanId: string, reason?: string): boolean {
+    const loan = this.loans.find(l => l.id === loanId);
+    if (loan && loan.status === 'PENDING') {
+      loan.status = 'APPROVED';
+      loan.approvalDate = new Date().toISOString();
+      
+      // Disburse loan amount to user's account
+      const user = this.users.find(u => u.id === loan.userId);
+      if (user) {
+        user.balance += loan.principal;
+        loan.status = 'ACTIVE';
+        loan.disbursementDate = new Date().toISOString();
+        
+        // Calculate next payment date (30 days from now)
+        const nextPayment = new Date();
+        nextPayment.setMonth(nextPayment.getMonth() + 1);
+        loan.nextPaymentDate = nextPayment.toISOString();
+
+        this.logTransaction(loan.userId, 'LOAN_DISBURSEMENT', loan.principal, 
+          `${loan.type} loan disbursement`, 'SUCCESS', undefined, undefined, loanId);
+      }
+
+      this.logAdminAction('APPROVE_LOAN', loan.userId, loanId, 
+        `Loan approved and disbursed: KES ${loan.principal.toLocaleString()}`, reason);
+      this.logAudit('LOAN_APPROVED', `Loan ${loanId} approved and disbursed`, loan.userId);
+      return true;
+    }
+    return false;
+  }
+
+  rejectLoan(loanId: string, reason: string): boolean {
+    const loan = this.loans.find(l => l.id === loanId);
+    if (loan && loan.status === 'PENDING') {
+      loan.status = 'REJECTED';
+      this.logAdminAction('REJECT_LOAN', loan.userId, loanId, `Loan rejected`, reason);
+      this.logAudit('LOAN_REJECTED', `Loan ${loanId} rejected - Reason: ${reason}`, loan.userId);
+      return true;
+    }
+    return false;
+  }
+
+  resolveFraudAlert(alertId: string, resolution: string): boolean {
+    const alert = this.fraudAlerts.find(a => a.id === alertId);
+    if (alert) {
+      alert.resolved = true;
+      this.logAdminAction('RESOLVE_FRAUD_ALERT', alert.userId, undefined, 
+        `Fraud alert resolved: ${resolution}`, resolution);
+      this.logAudit('FRAUD_ALERT_RESOLVED', `Fraud alert ${alertId} resolved`, alert.userId);
       return true;
     }
     return false;
@@ -318,7 +581,7 @@ class ATMService {
     return this.users.find(u => u.id === this.currentSession!.userId);
   }
 
-  private logTransaction(userId: string, type: Transaction['type'], amount: number, description: string, status: Transaction['status'], fromAccount?: string, toAccount?: string): void {
+  private logTransaction(userId: string, type: Transaction['type'], amount: number, description: string, status: Transaction['status'], fromAccount?: string, toAccount?: string, loanId?: string): void {
     const transaction: Transaction = {
       id: Math.random().toString(36).substr(2, 9),
       userId,
@@ -328,7 +591,8 @@ class ATMService {
       timestamp: new Date().toISOString(),
       status,
       fromAccount,
-      toAccount
+      toAccount,
+      loanId
     };
     this.transactions.push(transaction);
   }
@@ -344,6 +608,23 @@ class ATMService {
       userAgent: 'ATM-System'
     };
     this.auditLogs.push(log);
+  }
+
+  private logAdminAction(action: AdminAction['action'], targetUserId?: string, 
+                        targetLoanId?: string, details?: string, reason?: string): void {
+    if (!this.currentSession) return;
+    
+    const adminAction: AdminAction = {
+      id: Math.random().toString(36).substr(2, 9),
+      adminId: this.currentSession.userId,
+      action,
+      targetUserId,
+      targetLoanId,
+      details: details || '',
+      timestamp: new Date().toISOString(),
+      reason
+    };
+    this.adminActions.push(adminAction);
   }
 
   private detectFraud(userId: string, type: string, amount: number): boolean {
@@ -371,6 +652,31 @@ class ATMService {
       resolved: false
     };
     this.fraudAlerts.push(alert);
+  }
+
+  private calculateInterestRate(creditScore: number, loanType: Loan['type']): number {
+    let baseRate = 15; // Base rate of 15%
+    
+    // Adjust based on credit score
+    if (creditScore >= 750) baseRate -= 3;
+    else if (creditScore >= 700) baseRate -= 2;
+    else if (creditScore >= 650) baseRate -= 1;
+    
+    // Adjust based on loan type
+    switch (loanType) {
+      case 'PERSONAL': return baseRate;
+      case 'BUSINESS': return baseRate - 1;
+      case 'EMERGENCY': return baseRate + 2;
+      case 'EDUCATION': return baseRate - 2;
+      default: return baseRate;
+    }
+  }
+
+  private calculateMonthlyPayment(principal: number, annualRate: number, months: number): number {
+    const monthlyRate = annualRate / 100 / 12;
+    const payment = principal * (monthlyRate * Math.pow(1 + monthlyRate, months)) / 
+                   (Math.pow(1 + monthlyRate, months) - 1);
+    return Math.round(payment);
   }
 }
 

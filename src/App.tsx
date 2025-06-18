@@ -9,6 +9,7 @@ import BalanceScreen from './components/BalanceScreen';
 import TransferScreen from './components/TransferScreen';
 import HistoryScreen from './components/HistoryScreen';
 import BillPaymentScreen from './components/BillPaymentScreen';
+import LoansScreen from './components/LoansScreen';
 import SettingsScreen from './components/SettingsScreen';
 import AdminScreen from './components/AdminScreen';
 import { Toaster } from "@/components/ui/toaster";
@@ -39,6 +40,8 @@ const ATMApp: React.FC = () => {
         return <BalanceScreen onBack={handleBack} />;
       case 'transfer':
         return <TransferScreen onBack={handleBack} />;
+      case 'loans':
+        return <LoansScreen onBack={handleBack} />;
       case 'history':
         return <HistoryScreen onBack={handleBack} />;
       case 'bills':

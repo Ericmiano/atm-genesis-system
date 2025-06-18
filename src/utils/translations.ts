@@ -1,7 +1,6 @@
-
 import { Language } from '../types/atm';
 
-export const translations: Record<Language, Record<string, string>> = {
+export const translations = {
   en: {
     // Login Screen
     atmSystem: 'ATM System',
@@ -21,6 +20,7 @@ export const translations: Record<Language, Record<string, string>> = {
     fundsTransfer: 'Funds Transfer',
     transactionHistory: 'Transaction History',
     billPayment: 'Bill Payment',
+    loans: 'Loans',
     settings: 'Settings',
     logout: 'Logout',
     
@@ -66,7 +66,49 @@ export const translations: Record<Language, Record<string, string>> = {
     users: 'Users',
     transactions: 'Transactions',
     auditLogs: 'Audit Logs',
-    fraudAlerts: 'Fraud Alerts'
+    fraudAlerts: 'Fraud Alerts',
+    
+    // New loan-related translations
+    loanApplication: 'Loan Application',
+    myLoans: 'My Loans',
+    loanPayments: 'Loan Payments',
+    applyForLoan: 'Apply for Loan',
+    loanType: 'Loan Type',
+    loanAmount: 'Loan Amount',
+    loanTerm: 'Loan Term',
+    interestRate: 'Interest Rate',
+    monthlyPayment: 'Monthly Payment',
+    remainingBalance: 'Remaining Balance',
+    loanStatus: 'Loan Status',
+    personalLoan: 'Personal Loan',
+    businessLoan: 'Business Loan',
+    emergencyLoan: 'Emergency Loan',
+    educationLoan: 'Education Loan',
+    loanPurpose: 'Loan Purpose',
+    collateral: 'Collateral',
+    makePayment: 'Make Payment',
+    paymentAmount: 'Payment Amount',
+    nextPaymentDue: 'Next Payment Due',
+    loanHistory: 'Loan History',
+    
+    // Enhanced admin translations
+    userManagement: 'User Management',
+    loanManagement: 'Loan Management',
+    systemMonitoring: 'System Monitoring',
+    suspendUser: 'Suspend User',
+    activateUser: 'Activate User',
+    resetPin: 'Reset PIN',
+    adjustBalance: 'Adjust Balance',
+    approveLoan: 'Approve Loan',
+    rejectLoan: 'Reject Loan',
+    resolveFraudAlert: 'Resolve Fraud Alert',
+    adminActions: 'Admin Actions',
+    reason: 'Reason',
+    userActions: 'User Actions',
+    loanApprovals: 'Loan Approvals',
+    fraudMonitoring: 'Fraud Monitoring',
+    systemHealth: 'System Health',
+    complianceReports: 'Compliance Reports',
   },
   es: {
     // Login Screen
@@ -87,6 +129,7 @@ export const translations: Record<Language, Record<string, string>> = {
     fundsTransfer: 'Transferencia de Fondos',
     transactionHistory: 'Historial de Transacciones',
     billPayment: 'Pago de Facturas',
+    loans: 'Préstamos',
     settings: 'Configuración',
     logout: 'Cerrar Sesión',
     
@@ -132,7 +175,48 @@ export const translations: Record<Language, Record<string, string>> = {
     users: 'Usuarios',
     transactions: 'Transacciones',
     auditLogs: 'Registros de Auditoría',
-    fraudAlerts: 'Alertas de Fraude'
+    fraudAlerts: 'Alertas de Fraude',
+    
+    // Loan translations in Spanish
+    loanApplication: 'Solicitud de Préstamo',
+    myLoans: 'Mis Préstamos',
+    loanPayments: 'Pagos de Préstamo',
+    applyForLoan: 'Solicitar Préstamo',
+    loanType: 'Tipo de Préstamo',
+    loanAmount: 'Monto del Préstamo',
+    loanTerm: 'Plazo del Préstamo',
+    interestRate: 'Tasa de Interés',
+    monthlyPayment: 'Pago Mensual',
+    remainingBalance: 'Saldo Restante',
+    loanStatus: 'Estado del Préstamo',
+    personalLoan: 'Préstamo Personal',
+    businessLoan: 'Préstamo Comercial',
+    emergencyLoan: 'Préstamo de Emergencia',
+    educationLoan: 'Préstamo Educativo',
+    loanPurpose: 'Propósito del Préstamo',
+    collateral: 'Garantía',
+    makePayment: 'Realizar Pago',
+    paymentAmount: 'Monto del Pago',
+    nextPaymentDue: 'Próximo Pago Vence',
+    loanHistory: 'Historial de Préstamos',
+    
+    userManagement: 'Gestión de Usuarios',
+    loanManagement: 'Gestión de Préstamos',
+    systemMonitoring: 'Monitoreo del Sistema',
+    suspendUser: 'Suspender Usuario',
+    activateUser: 'Activar Usuario',
+    resetPin: 'Restablecer PIN',
+    adjustBalance: 'Ajustar Saldo',
+    approveLoan: 'Aprobar Préstamo',
+    rejectLoan: 'Rechazar Préstamo',
+    resolveFraudAlert: 'Resolver Alerta de Fraude',
+    adminActions: 'Acciones de Administrador',
+    reason: 'Razón',
+    userActions: 'Acciones de Usuario',
+    loanApprovals: 'Aprobaciones de Préstamo',
+    fraudMonitoring: 'Monitoreo de Fraude',
+    systemHealth: 'Salud del Sistema',
+    complianceReports: 'Reportes de Cumplimiento',
   },
   fr: {
     // Login Screen
@@ -153,6 +237,7 @@ export const translations: Record<Language, Record<string, string>> = {
     fundsTransfer: 'Transfert de Fonds',
     transactionHistory: 'Historique des Transactions',
     billPayment: 'Paiement de Factures',
+    loans: 'Prêts',
     settings: 'Paramètres',
     logout: 'Déconnexion',
     
@@ -198,6 +283,47 @@ export const translations: Record<Language, Record<string, string>> = {
     users: 'Utilisateurs',
     transactions: 'Transactions',
     auditLogs: 'Journaux d\'Audit',
-    fraudAlerts: 'Alertes de Fraude'
+    fraudAlerts: 'Alertes de Fraude',
+    
+    // Loan translations in French
+    loanApplication: 'Demande de Prêt',
+    myLoans: 'Mes Prêts',
+    loanPayments: 'Paiements de Prêt',
+    applyForLoan: 'Demander un Prêt',
+    loanType: 'Type de Prêt',
+    loanAmount: 'Montant du Prêt',
+    loanTerm: 'Durée du Prêt',
+    interestRate: 'Taux d\'Intérêt',
+    monthlyPayment: 'Paiement Mensuel',
+    remainingBalance: 'Solde Restant',
+    loanStatus: 'Statut du Prêt',
+    personalLoan: 'Prêt Personnel',
+    businessLoan: 'Prêt Commercial',
+    emergencyLoan: 'Prêt d\'Urgence',
+    educationLoan: 'Prêt Éducatif',
+    loanPurpose: 'Objectif du Prêt',
+    collateral: 'Garantie',
+    makePayment: 'Effectuer un Paiement',
+    paymentAmount: 'Montant du Paiement',
+    nextPaymentDue: 'Prochain Paiement Dû',
+    loanHistory: 'Historique des Prêts',
+    
+    userManagement: 'Gestion des Utilisateurs',
+    loanManagement: 'Gestion des Prêts',
+    systemMonitoring: 'Surveillance du Système',
+    suspendUser: 'Suspendre l\'Utilisateur',
+    activateUser: 'Activer l\'Utilisateur',
+    resetPin: 'Réinitialiser le PIN',
+    adjustBalance: 'Ajuster le Solde',
+    approveLoan: 'Approuver le Prêt',
+    rejectLoan: 'Rejeter le Prêt',
+    resolveFraudAlert: 'Résoudre l\'Alerte de Fraude',
+    adminActions: 'Actions d\'Administrateur',
+    reason: 'Raison',
+    userActions: 'Actions Utilisateur',
+    loanApprovals: 'Approbations de Prêt',
+    fraudMonitoring: 'Surveillance de la Fraude',
+    systemHealth: 'Santé du Système',
+    complianceReports: 'Rapports de Conformité',
   }
 };
