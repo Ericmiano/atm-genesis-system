@@ -14,15 +14,15 @@ class ATMService {
   }
 
   private initializeSampleData() {
-    // Sample users
+    // Sample users with KES amounts
     this.users = [
       {
         id: '1',
         accountNumber: '1234567890',
-        name: 'John Doe',
+        name: 'John Kimani',
         email: 'john@example.com',
         pin: '1234',
-        balance: 5000,
+        balance: 125000, // KES 125,000
         role: 'USER',
         isLocked: false,
         failedAttempts: 0,
@@ -31,10 +31,10 @@ class ATMService {
       {
         id: '2',
         accountNumber: '0987654321',
-        name: 'Jane Smith',
-        email: 'jane@example.com',
+        name: 'Grace Wanjiku',
+        email: 'grace@example.com',
         pin: '5678',
-        balance: 3500,
+        balance: 87500, // KES 87,500
         role: 'USER',
         isLocked: false,
         failedAttempts: 0,
@@ -60,9 +60,18 @@ class ATMService {
         id: '1',
         userId: '1',
         type: 'WITHDRAWAL',
-        amount: 200,
+        amount: 5000,
         description: 'Cash withdrawal',
         timestamp: new Date(Date.now() - 86400000).toISOString(),
+        status: 'SUCCESS'
+      },
+      {
+        id: '2',
+        userId: '1',
+        type: 'DEPOSIT',
+        amount: 15000,
+        description: 'Cash deposit',
+        timestamp: new Date(Date.now() - 172800000).toISOString(),
         status: 'SUCCESS'
       }
     ];
@@ -128,17 +137,17 @@ class ATMService {
       return { success: false, message: 'Insufficient funds' };
     }
 
-    // Fraud detection
+    // Fraud detection for large amounts (KES 50,000+)
     if (this.detectFraud(user.id, 'WITHDRAWAL', amount)) {
-      this.createFraudAlert(user.id, 'SUSPICIOUS_AMOUNT', `Large withdrawal attempt: $${amount}`);
+      this.createFraudAlert(user.id, 'SUSPICIOUS_AMOUNT', `Large withdrawal attempt: KES ${amount.toLocaleString()}`);
       return { success: false, message: 'Transaction blocked for security reasons' };
     }
 
     user.balance -= amount;
-    this.logTransaction(user.id, 'WITHDRAWAL', amount, `Cash withdrawal of $${amount}`, 'SUCCESS');
-    this.logAudit('WITHDRAWAL', `Withdrew $${amount}`, user.id);
+    this.logTransaction(user.id, 'WITHDRAWAL', amount, `Cash withdrawal of KES ${amount.toLocaleString()}`, 'SUCCESS');
+    this.logAudit('WITHDRAWAL', `Withdrew KES ${amount.toLocaleString()}`, user.id);
 
-    return { success: true, message: `Successfully withdrew $${amount}`, balance: user.balance };
+    return { success: true, message: `Successfully withdrew KES ${amount.toLocaleString()}`, balance: user.balance };
   }
 
   // Cash Deposit
@@ -155,10 +164,10 @@ class ATMService {
     }
 
     user.balance += amount;
-    this.logTransaction(user.id, 'DEPOSIT', amount, `Cash deposit of $${amount}`, 'SUCCESS');
-    this.logAudit('DEPOSIT', `Deposited $${amount}`, user.id);
+    this.logTransaction(user.id, 'DEPOSIT', amount, `Cash deposit of KES ${amount.toLocaleString()}`, 'SUCCESS');
+    this.logAudit('DEPOSIT', `Deposited KES ${amount.toLocaleString()}`, user.id);
 
-    return { success: true, message: `Successfully deposited $${amount}`, balance: user.balance };
+    return { success: true, message: `Successfully deposited KES ${amount.toLocaleString()}`, balance: user.balance };
   }
 
   // Balance Inquiry
@@ -189,14 +198,15 @@ class ATMService {
     if (!toUser) return { success: false, message: 'Recipient account not found' };
     if (amount <= 0) return { success: false, message: 'Invalid amount' };
     if (amount > fromUser.balance) return { success: false, message: 'Insufficient funds' };
+    if (fromUser.accountNumber === toAccountNumber) return { success: false, message: 'Cannot transfer to same account' };
 
     fromUser.balance -= amount;
     toUser.balance += amount;
 
     this.logTransaction(fromUser.id, 'TRANSFER', amount, `Transfer to ${toAccountNumber}`, 'SUCCESS', fromUser.accountNumber, toAccountNumber);
-    this.logAudit('TRANSFER', `Transferred $${amount} to ${toAccountNumber}`, fromUser.id);
+    this.logAudit('TRANSFER', `Transferred KES ${amount.toLocaleString()} to ${toAccountNumber}`, fromUser.id);
 
-    return { success: true, message: `Successfully transferred $${amount} to ${toAccountNumber}`, balance: fromUser.balance };
+    return { success: true, message: `Successfully transferred KES ${amount.toLocaleString()} to ${toAccountNumber}`, balance: fromUser.balance };
   }
 
   // PIN Change
@@ -237,9 +247,9 @@ class ATMService {
 
     user.balance -= amount;
     this.logTransaction(user.id, 'BILL_PAYMENT', amount, `Bill payment: ${billId}`, 'SUCCESS');
-    this.logAudit('BILL_PAYMENT', `Paid bill ${billId}: $${amount}`, user.id);
+    this.logAudit('BILL_PAYMENT', `Paid bill ${billId}: KES ${amount.toLocaleString()}`, user.id);
 
-    return { success: true, message: `Bill payment of $${amount} successful`, balance: user.balance };
+    return { success: true, message: `Bill payment of KES ${amount.toLocaleString()} successful`, balance: user.balance };
   }
 
   // Transaction History
@@ -252,6 +262,16 @@ class ATMService {
       .filter(t => t.userId === this.currentSession!.userId)
       .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
       .slice(0, limit);
+  }
+
+  // Get available bills
+  getAvailableBills(): Bill[] {
+    return [
+      { id: 'KPLC001', type: 'UTILITY', name: 'Kenya Power', amount: 2500, dueDate: '2024-07-15' },
+      { id: 'NAIROBI_WATER', type: 'UTILITY', name: 'Nairobi Water', amount: 1200, dueDate: '2024-07-20' },
+      { id: 'SAFARICOM', type: 'SUBSCRIPTION', name: 'Safaricom Postpaid', amount: 3000, dueDate: '2024-07-10' },
+      { id: 'DSTV', type: 'SUBSCRIPTION', name: 'DSTV Premium', amount: 4500, dueDate: '2024-07-25' }
+    ];
   }
 
   // Logout
@@ -327,8 +347,8 @@ class ATMService {
   }
 
   private detectFraud(userId: string, type: string, amount: number): boolean {
-    // Simple fraud detection rules
-    if (amount > 2000) return true; // Large withdrawal
+    // Fraud detection for KES amounts
+    if (amount > 50000) return true; // Large withdrawal (KES 50,000+)
     
     const recentTransactions = this.transactions.filter(
       t => t.userId === userId && 

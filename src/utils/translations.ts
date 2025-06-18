@@ -32,13 +32,11 @@ export const translations: Record<Language, Record<string, string>> = {
     success: 'Success',
     error: 'Error',
     
-    // Withdrawal
+    // Withdrawal & Deposit
     quickAmounts: 'Quick Amounts',
     customAmount: 'Custom Amount',
     enterAmount: 'Enter Amount',
     withdraw: 'Withdraw',
-    
-    // Deposit
     deposit: 'Deposit',
     
     // Balance
@@ -100,13 +98,11 @@ export const translations: Record<Language, Record<string, string>> = {
     success: 'Éxito',
     error: 'Error',
     
-    // Withdrawal
+    // Withdrawal & Deposit
     quickAmounts: 'Cantidades Rápidas',
     customAmount: 'Cantidad Personalizada',
     enterAmount: 'Ingrese Cantidad',
     withdraw: 'Retirar',
-    
-    // Deposit
     deposit: 'Depositar',
     
     // Balance
@@ -168,13 +164,11 @@ export const translations: Record<Language, Record<string, string>> = {
     success: 'Succès',
     error: 'Erreur',
     
-    // Withdrawal
+    // Withdrawal & Deposit
     quickAmounts: 'Montants Rapides',
     customAmount: 'Montant Personnalisé',
     enterAmount: 'Entrez le Montant',
     withdraw: 'Retirer',
-    
-    // Deposit
     deposit: 'Déposer',
     
     // Balance
