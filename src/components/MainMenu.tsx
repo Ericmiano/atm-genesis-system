@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useATM } from '../contexts/ATMContext';
 import { translations } from '../utils/translations';
+import ATMCardDetails from './ATMCardDetails';
 import { 
   CreditCard, 
   PiggyBank, 
@@ -41,7 +42,7 @@ const MainMenu: React.FC<MainMenuProps> = ({ onNavigate }) => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-900 via-blue-800 to-blue-900 p-4">
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-6xl mx-auto">
         <Card className="mb-6 bg-white/95 backdrop-blur border-0 shadow-xl animate-scale-in">
           <CardHeader className="text-center">
             <CardTitle className="text-2xl text-gray-800">
@@ -51,26 +52,36 @@ const MainMenu: React.FC<MainMenuProps> = ({ onNavigate }) => {
           </CardHeader>
         </Card>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-          {menuItems.map((item, index) => {
-            const Icon = item.icon;
-            return (
-              <Button
-                key={item.id}
-                onClick={() => onNavigate(item.id)}
-                className="h-24 bg-white hover:bg-gray-50 text-gray-800 border-0 shadow-lg group animate-fade-in transition-all duration-200 hover:scale-105"
-                variant="outline"
-                style={{ animationDelay: `${index * 0.1}s` }}
-              >
-                <div className="flex flex-col items-center space-y-2">
-                  <div className={`w-10 h-10 ${item.color} rounded-full flex items-center justify-center group-hover:scale-110 transition-transform`}>
-                    <Icon className="w-5 h-5 text-white" />
-                  </div>
-                  <span className="text-sm font-medium">{item.label}</span>
-                </div>
-              </Button>
-            );
-          })}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+          {/* ATM Card Details */}
+          <div className="lg:col-span-1">
+            <ATMCardDetails />
+          </div>
+
+          {/* Menu Items */}
+          <div className="lg:col-span-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {menuItems.map((item, index) => {
+                const Icon = item.icon;
+                return (
+                  <Button
+                    key={item.id}
+                    onClick={() => onNavigate(item.id)}
+                    className="h-24 bg-white hover:bg-gray-50 text-gray-800 border-0 shadow-lg group animate-fade-in transition-all duration-200 hover:scale-105"
+                    variant="outline"
+                    style={{ animationDelay: `${index * 0.1}s` }}
+                  >
+                    <div className="flex flex-col items-center space-y-2">
+                      <div className={`w-10 h-10 ${item.color} rounded-full flex items-center justify-center group-hover:scale-110 transition-transform`}>
+                        <Icon className="w-5 h-5 text-white" />
+                      </div>
+                      <span className="text-sm font-medium">{item.label}</span>
+                    </div>
+                  </Button>
+                );
+              })}
+            </div>
+          </div>
         </div>
 
         <Card className="bg-white/95 backdrop-blur border-0 shadow-xl animate-fade-in">

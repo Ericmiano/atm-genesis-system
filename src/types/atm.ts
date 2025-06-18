@@ -1,18 +1,29 @@
-
 export interface User {
   id: string;
   accountNumber: string;
+  username: string;
+  password: string;
   name: string;
   email: string;
   pin: string;
   balance: number;
   role: 'USER' | 'ADMIN';
   isLocked: boolean;
+  lockReason?: string;
+  lockDate?: string;
   failedAttempts: number;
+  failedPasswordAttempts: number;
+  lastPasswordAttempt?: string;
   createdAt: string;
   lastLogin?: string;
   creditScore?: number;
   monthlyIncome?: number;
+  cardNumber: string;
+  expiryDate: string;
+  cvv: string;
+  cardType: 'VISA' | 'MASTERCARD';
+  passwordLastChanged?: string;
+  mustChangePassword: boolean;
 }
 
 export interface Transaction {
@@ -105,4 +116,19 @@ export interface AdminAction {
   details: string;
   timestamp: string;
   reason?: string;
+}
+
+export interface PasswordRequirements {
+  minLength: number;
+  requireUppercase: boolean;
+  requireLowercase: boolean;
+  requireNumbers: boolean;
+  requireSpecialChars: boolean;
+}
+
+export interface SecuritySettings {
+  maxFailedAttempts: number;
+  lockoutDuration: number; // in minutes
+  passwordExpiryDays: number;
+  sessionTimeout: number; // in minutes
 }

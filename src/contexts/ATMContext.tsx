@@ -9,7 +9,7 @@ interface ATMContextType {
   isAuthenticated: boolean;
   setCurrentUser: (user: User | null) => void;
   setLanguage: (lang: Language) => void;
-  login: (accountNumber: string, pin: string) => Promise<{ success: boolean; message: string }>;
+  login: (username: string, password: string) => Promise<{ success: boolean; message: string }>;
   logout: () => void;
 }
 
@@ -20,8 +20,8 @@ export const ATMProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [language, setLanguage] = useState<Language>('en');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-  const login = async (accountNumber: string, pin: string) => {
-    const result = await atmService.authenticate(accountNumber, pin);
+  const login = async (username: string, password: string) => {
+    const result = await atmService.authenticate(username, password);
     if (result.success && result.user) {
       setCurrentUser(result.user);
       setIsAuthenticated(true);

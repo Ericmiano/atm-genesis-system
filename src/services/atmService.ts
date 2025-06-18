@@ -1,4 +1,4 @@
-import { User, Transaction, AuditLog, ATMSession, FraudAlert, Bill, Loan, LoanPayment, AdminAction } from '../types/atm';
+import { User, Transaction, AuditLog, ATMSession, FraudAlert, Bill, Loan, LoanPayment, AdminAction, PasswordRequirements, SecuritySettings } from '../types/atm';
 
 class ATMService {
   private users: User[] = [];
@@ -10,45 +10,76 @@ class ATMService {
   private loanPayments: LoanPayment[] = [];
   private adminActions: AdminAction[] = [];
   private currentSession: ATMSession | null = null;
+  private passwordRequirements: PasswordRequirements = {
+    minLength: 8,
+    requireUppercase: true,
+    requireLowercase: true,
+    requireNumbers: true,
+    requireSpecialChars: true,
+  };
+  private securitySettings: SecuritySettings = {
+    maxFailedAttempts: 3,
+    lockoutDuration: 30,
+    passwordExpiryDays: 90,
+    sessionTimeout: 15,
+  };
 
   constructor() {
     this.initializeSampleData();
   }
 
   private initializeSampleData() {
-    // Sample users with KES amounts and credit information
+    // Sample users with KES amounts, usernames, passwords, and card details
     this.users = [
       {
         id: '1',
         accountNumber: '1234567890',
+        username: 'john.kimani',
+        password: 'SecurePass123!',
         name: 'John Kimani',
         email: 'john@example.com',
         pin: '1234',
-        balance: 125000, // KES 125,000
+        balance: 125000,
         role: 'USER',
         isLocked: false,
         failedAttempts: 0,
+        failedPasswordAttempts: 0,
         createdAt: new Date().toISOString(),
         creditScore: 750,
         monthlyIncome: 85000,
+        cardNumber: '4532 1234 5678 9012',
+        expiryDate: '12/27',
+        cvv: '123',
+        cardType: 'VISA',
+        mustChangePassword: false,
       },
       {
         id: '2',
         accountNumber: '0987654321',
+        username: 'grace.wanjiku',
+        password: 'MyPassword456@',
         name: 'Grace Wanjiku',
         email: 'grace@example.com',
         pin: '5678',
-        balance: 87500, // KES 87,500
+        balance: 87500,
         role: 'USER',
         isLocked: false,
         failedAttempts: 0,
+        failedPasswordAttempts: 0,
         createdAt: new Date().toISOString(),
         creditScore: 680,
         monthlyIncome: 65000,
+        cardNumber: '5555 4444 3333 2222',
+        expiryDate: '09/26',
+        cvv: '456',
+        cardType: 'MASTERCARD',
+        mustChangePassword: false,
       },
       {
         id: 'admin',
         accountNumber: 'ADMIN001',
+        username: 'admin',
+        password: 'AdminPass999!',
         name: 'ATM Administrator',
         email: 'admin@atm.com',
         pin: '0000',
@@ -56,7 +87,13 @@ class ATMService {
         role: 'ADMIN',
         isLocked: false,
         failedAttempts: 0,
+        failedPasswordAttempts: 0,
         createdAt: new Date().toISOString(),
+        cardNumber: '0000 0000 0000 0000',
+        expiryDate: '12/99',
+        cvv: '000',
+        cardType: 'VISA',
+        mustChangePassword: false,
       }
     ];
 
@@ -73,10 +110,10 @@ class ATMService {
         totalAmount: 54000,
         remainingBalance: 45000,
         status: 'ACTIVE',
-        applicationDate: new Date(Date.now() - 2592000000).toISOString(), // 30 days ago
-        approvalDate: new Date(Date.now() - 2419200000).toISOString(), // 28 days ago
+        applicationDate: new Date(Date.now() - 2592000000).toISOString(),
+        approvalDate: new Date(Date.now() - 2419200000).toISOString(),
         disbursementDate: new Date(Date.now() - 2419200000).toISOString(),
-        nextPaymentDate: new Date(Date.now() + 604800000).toISOString(), // 7 days from now
+        nextPaymentDate: new Date(Date.now() + 604800000).toISOString(),
         purpose: 'Business expansion',
       }
     ];
@@ -105,32 +142,52 @@ class ATMService {
     ];
   }
 
-  // Authentication
-  async authenticate(accountNumber: string, pin: string): Promise<{ success: boolean; user?: User; message: string }> {
-    const user = this.users.find(u => u.accountNumber === accountNumber);
+  // Enhanced Authentication with username/password
+  async authenticate(username: string, password: string): Promise<{ success: boolean; user?: User; message: string }> {
+    const user = this.users.find(u => u.username === username);
     
     if (!user) {
-      this.logAudit('LOGIN_FAILED', `Failed login attempt for account: ${accountNumber}`);
-      return { success: false, message: 'Invalid account number' };
+      this.logAudit('LOGIN_FAILED', `Failed login attempt for username: ${username}`);
+      return { success: false, message: 'Invalid username or password' };
     }
 
     if (user.isLocked) {
-      this.logAudit('LOGIN_BLOCKED', `Login attempt for locked account: ${accountNumber}`, user.id);
-      return { success: false, message: 'Account is locked. Please contact customer service.' };
+      this.logAudit('LOGIN_BLOCKED', `Login attempt for locked account: ${username}`, user.id);
+      return { 
+        success: false, 
+        message: `Account is locked${user.lockReason ? ': ' + user.lockReason : ''}. Please contact customer service.` 
+      };
     }
 
-    if (user.pin !== pin) {
-      user.failedAttempts++;
-      if (user.failedAttempts >= 3) {
+    // Check for lockout due to failed password attempts
+    if (this.isAccountTemporarilyLocked(user)) {
+      return { 
+        success: false, 
+        message: `Account temporarily locked due to multiple failed attempts. Try again later.` 
+      };
+    }
+
+    if (user.password !== password) {
+      user.failedPasswordAttempts++;
+      user.lastPasswordAttempt = new Date().toISOString();
+      
+      if (user.failedPasswordAttempts >= this.securitySettings.maxFailedAttempts) {
         user.isLocked = true;
-        this.logAudit('ACCOUNT_LOCKED', `Account locked due to multiple failed attempts`, user.id);
-        return { success: false, message: 'Account locked due to multiple failed attempts' };
+        user.lockReason = 'Multiple failed password attempts';
+        user.lockDate = new Date().toISOString();
+        this.logAudit('ACCOUNT_LOCKED', `Account locked due to multiple failed password attempts`, user.id);
+        return { success: false, message: 'Account locked due to multiple failed password attempts' };
       }
-      this.logAudit('LOGIN_FAILED', `Invalid PIN for account: ${accountNumber}`, user.id);
-      return { success: false, message: `Invalid PIN. ${3 - user.failedAttempts} attempts remaining.` };
+      
+      this.logAudit('LOGIN_FAILED', `Invalid password for username: ${username}`, user.id);
+      return { 
+        success: false, 
+        message: `Invalid username or password. ${this.securitySettings.maxFailedAttempts - user.failedPasswordAttempts} attempts remaining.` 
+      };
     }
 
     // Reset failed attempts on successful login
+    user.failedPasswordAttempts = 0;
     user.failedAttempts = 0;
     user.lastLogin = new Date().toISOString();
 
@@ -145,6 +202,152 @@ class ATMService {
 
     this.logAudit('LOGIN_SUCCESS', `Successful login`, user.id);
     return { success: true, user, message: 'Login successful' };
+  }
+
+  // PIN verification for transactions
+  async verifyPin(pin: string): Promise<{ success: boolean; message: string }> {
+    if (!this.currentSession || !this.currentSession.isActive) {
+      return { success: false, message: 'No active session' };
+    }
+
+    const user = this.getCurrentUser();
+    if (!user) return { success: false, message: 'User not found' };
+
+    if (user.pin !== pin) {
+      user.failedAttempts++;
+      if (user.failedAttempts >= 3) {
+        user.isLocked = true;
+        user.lockReason = 'Multiple failed PIN attempts';
+        user.lockDate = new Date().toISOString();
+        this.logAudit('ACCOUNT_LOCKED', `Account locked due to multiple failed PIN attempts`, user.id);
+        return { success: false, message: 'Account locked due to multiple failed PIN attempts' };
+      }
+      this.logAudit('PIN_VERIFICATION_FAILED', `Invalid PIN attempt`, user.id);
+      return { success: false, message: `Invalid PIN. ${3 - user.failedAttempts} attempts remaining.` };
+    }
+
+    user.failedAttempts = 0;
+    return { success: true, message: 'PIN verified successfully' };
+  }
+
+  // Password validation
+  validatePassword(password: string): { valid: boolean; errors: string[] } {
+    const errors: string[] = [];
+    const req = this.passwordRequirements;
+
+    if (password.length < req.minLength) {
+      errors.push(`Password must be at least ${req.minLength} characters long`);
+    }
+
+    if (req.requireUppercase && !/[A-Z]/.test(password)) {
+      errors.push('Password must contain at least one uppercase letter');
+    }
+
+    if (req.requireLowercase && !/[a-z]/.test(password)) {
+      errors.push('Password must contain at least one lowercase letter');
+    }
+
+    if (req.requireNumbers && !/\d/.test(password)) {
+      errors.push('Password must contain at least one number');
+    }
+
+    if (req.requireSpecialChars && !/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
+      errors.push('Password must contain at least one special character');
+    }
+
+    return { valid: errors.length === 0, errors };
+  }
+
+  // Change password
+  async changePassword(currentPassword: string, newPassword: string): Promise<{ success: boolean; message: string }> {
+    if (!this.currentSession || !this.currentSession.isActive) {
+      return { success: false, message: 'No active session' };
+    }
+
+    const user = this.getCurrentUser();
+    if (!user) return { success: false, message: 'User not found' };
+
+    if (user.password !== currentPassword) {
+      return { success: false, message: 'Current password is incorrect' };
+    }
+
+    const validation = this.validatePassword(newPassword);
+    if (!validation.valid) {
+      return { success: false, message: validation.errors.join('. ') };
+    }
+
+    user.password = newPassword;
+    user.passwordLastChanged = new Date().toISOString();
+    user.mustChangePassword = false;
+    
+    this.logAudit('PASSWORD_CHANGED', 'Password changed successfully', user.id);
+    return { success: true, message: 'Password changed successfully' };
+  }
+
+  // Check if account is temporarily locked
+  private isAccountTemporarilyLocked(user: User): boolean {
+    if (!user.lastPasswordAttempt || user.failedPasswordAttempts < this.securitySettings.maxFailedAttempts) {
+      return false;
+    }
+
+    const lockoutTime = new Date(user.lastPasswordAttempt).getTime() + (this.securitySettings.lockoutDuration * 60 * 1000);
+    return Date.now() < lockoutTime;
+  }
+
+  // Enhanced Admin Functions
+  lockAccount(userId: string, reason: string): boolean {
+    const user = this.users.find(u => u.id === userId);
+    if (user && user.role !== 'ADMIN') {
+      user.isLocked = true;
+      user.lockReason = reason;
+      user.lockDate = new Date().toISOString();
+      this.logAdminAction('SUSPEND_USER', userId, undefined, `Account locked: ${reason}`, reason);
+      this.logAudit('ACCOUNT_LOCKED', `Account locked by admin: ${reason}`, userId);
+      return true;
+    }
+    return false;
+  }
+
+  unlockAccount(userId: string, reason?: string): boolean {
+    const user = this.users.find(u => u.id === userId);
+    if (user) {
+      user.isLocked = false;
+      user.failedAttempts = 0;
+      user.failedPasswordAttempts = 0;
+      user.lockReason = undefined;
+      user.lockDate = undefined;
+      this.logAdminAction('UNLOCK_ACCOUNT', userId, undefined, `Account unlocked`, reason);
+      this.logAudit('ACCOUNT_UNLOCKED', `Account unlocked by admin`, userId);
+      return true;
+    }
+    return false;
+  }
+
+  resetUserPassword(userId: string, newPassword: string, reason?: string): boolean {
+    const user = this.users.find(u => u.id === userId);
+    if (user) {
+      const validation = this.validatePassword(newPassword);
+      if (!validation.valid) return false;
+
+      user.password = newPassword;
+      user.passwordLastChanged = new Date().toISOString();
+      user.mustChangePassword = true;
+      user.failedPasswordAttempts = 0;
+      this.logAdminAction('RESET_PASSWORD', userId, undefined, `Password reset`, reason);
+      this.logAudit('PASSWORD_RESET', `Password reset by admin`, userId);
+      return true;
+    }
+    return false;
+  }
+
+  // Get password requirements
+  getPasswordRequirements(): PasswordRequirements {
+    return this.passwordRequirements;
+  }
+
+  // Get security settings
+  getSecuritySettings(): SecuritySettings {
+    return this.securitySettings;
   }
 
   // Cash Withdrawal
@@ -165,7 +368,6 @@ class ATMService {
       return { success: false, message: 'Insufficient funds' };
     }
 
-    // Fraud detection for large amounts (KES 50,000+)
     if (this.detectFraud(user.id, 'WITHDRAWAL', amount)) {
       this.createFraudAlert(user.id, 'SUSPICIOUS_AMOUNT', `Large withdrawal attempt: KES ${amount.toLocaleString()}`);
       return { success: false, message: 'Transaction blocked for security reasons' };
@@ -325,7 +527,6 @@ class ATMService {
       return { success: false, message: 'Loan term must be between 1 and 60 months' };
     }
 
-    // Check credit eligibility
     if (!user.creditScore || user.creditScore < 600) {
       return { success: false, message: 'Credit score too low for loan approval' };
     }
@@ -334,7 +535,6 @@ class ATMService {
       return { success: false, message: 'Loan amount exceeds affordable payment capacity' };
     }
 
-    // Fraud detection for large loan amounts
     if (amount > 200000) {
       this.createFraudAlert(user.id, 'LARGE_LOAN_REQUEST', `Large loan application: KES ${amount.toLocaleString()}`);
     }
@@ -388,7 +588,6 @@ class ATMService {
     if (amount <= 0) return { success: false, message: 'Invalid payment amount' };
     if (amount > user.balance) return { success: false, message: 'Insufficient funds' };
 
-    // Calculate interest and principal portions
     const monthlyInterest = (loan.remainingBalance * loan.interestRate / 100) / 12;
     const principalPortion = Math.min(amount - monthlyInterest, loan.remainingBalance - monthlyInterest);
     const interestPortion = amount - principalPortion;
@@ -401,7 +600,6 @@ class ATMService {
       loan.remainingBalance = 0;
     }
 
-    // Record payment
     const payment: LoanPayment = {
       id: Math.random().toString(36).substr(2, 9),
       loanId,
@@ -528,14 +726,12 @@ class ATMService {
       loan.status = 'APPROVED';
       loan.approvalDate = new Date().toISOString();
       
-      // Disburse loan amount to user's account
       const user = this.users.find(u => u.id === loan.userId);
       if (user) {
         user.balance += loan.principal;
         loan.status = 'ACTIVE';
         loan.disbursementDate = new Date().toISOString();
         
-        // Calculate next payment date (30 days from now)
         const nextPayment = new Date();
         nextPayment.setMonth(nextPayment.getMonth() + 1);
         loan.nextPaymentDate = nextPayment.toISOString();
@@ -628,15 +824,14 @@ class ATMService {
   }
 
   private detectFraud(userId: string, type: string, amount: number): boolean {
-    // Fraud detection for KES amounts
-    if (amount > 50000) return true; // Large withdrawal (KES 50,000+)
+    if (amount > 50000) return true;
     
     const recentTransactions = this.transactions.filter(
       t => t.userId === userId && 
-      new Date(t.timestamp).getTime() > Date.now() - 3600000 // Last hour
+      new Date(t.timestamp).getTime() > Date.now() - 3600000
     );
     
-    if (recentTransactions.length > 5) return true; // Too many transactions
+    if (recentTransactions.length > 5) return true;
 
     return false;
   }
@@ -655,14 +850,12 @@ class ATMService {
   }
 
   private calculateInterestRate(creditScore: number, loanType: Loan['type']): number {
-    let baseRate = 15; // Base rate of 15%
+    let baseRate = 15;
     
-    // Adjust based on credit score
     if (creditScore >= 750) baseRate -= 3;
     else if (creditScore >= 700) baseRate -= 2;
     else if (creditScore >= 650) baseRate -= 1;
     
-    // Adjust based on loan type
     switch (loanType) {
       case 'PERSONAL': return baseRate;
       case 'BUSINESS': return baseRate - 1;
