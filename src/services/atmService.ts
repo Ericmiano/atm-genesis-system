@@ -1,876 +1,852 @@
-import { User, Transaction, AuditLog, ATMSession, FraudAlert, Bill, Loan, LoanPayment, AdminAction, PasswordRequirements, SecuritySettings } from '../types/atm';
+import { User, Transaction, Loan, LoanPayment, AuditLog, Bill, ATMSession, FraudAlert, AdminAction, PasswordRequirements, SecuritySettings } from '../types/atm';
+
+// Mock data - replace with actual database or API calls
+let users: User[] = [
+  {
+    id: '1',
+    accountNumber: '1234567890',
+    username: 'user1',
+    password: 'password1',
+    name: 'John Doe',
+    email: 'john.doe@example.com',
+    pin: '1234',
+    balance: 1000,
+    role: 'USER',
+    isLocked: false,
+    failedAttempts: 0,
+    failedPasswordAttempts: 0,
+    cardNumber: '4111111111111111',
+    expiryDate: '12/24',
+    cvv: '123',
+    cardType: 'VISA',
+    mustChangePassword: false,
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: '2',
+    accountNumber: '9876543210',
+    username: 'admin1',
+    password: 'admin1',
+    name: 'Jane Smith',
+    email: 'jane.smith@example.com',
+    pin: '5678',
+    balance: 5000,
+    role: 'ADMIN',
+    isLocked: false,
+    failedAttempts: 0,
+    failedPasswordAttempts: 0,
+    cardNumber: '5222222222222222',
+    expiryDate: '01/25',
+    cvv: '456',
+    cardType: 'MASTERCARD',
+    mustChangePassword: false,
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: '3',
+    accountNumber: '5555555555',
+    username: 'lockeduser',
+    password: 'lockedpassword',
+    name: 'Locked User',
+    email: 'locked.user@example.com',
+    pin: '9999',
+    balance: 200,
+    role: 'USER',
+    isLocked: true,
+    lockReason: 'Too many failed login attempts',
+    lockDate: new Date().toISOString(),
+    failedAttempts: 5,
+    failedPasswordAttempts: 3,
+    cardNumber: '4333333333333333',
+    expiryDate: '03/26',
+    cvv: '789',
+    cardType: 'VISA',
+    mustChangePassword: false,
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: '4',
+    accountNumber: '1122334455',
+    username: 'mustchangepassword',
+    password: 'oldpassword',
+    name: 'Change Password User',
+    email: 'change.password@example.com',
+    pin: '1111',
+    balance: 1500,
+    role: 'USER',
+    isLocked: false,
+    failedAttempts: 0,
+    failedPasswordAttempts: 0,
+    cardNumber: '5444444444444444',
+    expiryDate: '05/27',
+    cvv: '012',
+    cardType: 'MASTERCARD',
+    mustChangePassword: true,
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: '5',
+    accountNumber: '6677889900',
+    username: 'regularuser',
+    password: 'regularpassword',
+    name: 'Regular User',
+    email: 'regular.user@example.com',
+    pin: '2222',
+    balance: 2500,
+    role: 'USER',
+    isLocked: false,
+    failedAttempts: 0,
+    failedPasswordAttempts: 0,
+    cardNumber: '4555555555555555',
+    expiryDate: '07/28',
+    cvv: '345',
+    cardType: 'VISA',
+    mustChangePassword: false,
+    createdAt: new Date().toISOString()
+  },
+];
+
+let transactions: Transaction[] = [];
+let loans: Loan[] = [];
+let auditLogs: AuditLog[] = [];
+let fraudAlerts: FraudAlert[] = [];
+
+// Mock bills
+let bills: Bill[] = [
+  {
+    id: 'bill1',
+    type: 'UTILITY',
+    name: 'Kenya Power Bill',
+    amount: 2500,
+    dueDate: new Date(new Date().setDate(new Date().getDate() + 10)).toISOString()
+  },
+  {
+    id: 'bill2',
+    type: 'SUBSCRIPTION',
+    name: 'DSTV Subscription',
+    amount: 1200,
+    dueDate: new Date(new Date().setDate(new Date().getDate() + 5)).toISOString()
+  },
+  {
+    id: 'bill3',
+    type: 'UTILITY',
+    name: 'Nairobi Water Bill',
+    amount: 800,
+    dueDate: new Date(new Date().setDate(new Date().getDate() - 2)).toISOString() // Overdue
+  },
+  {
+    id: 'bill4',
+    type: 'SUBSCRIPTION',
+    name: 'Safaricom PostPay',
+    amount: 3000,
+    dueDate: new Date(new Date().setDate(new Date().getDate() + 15)).toISOString()
+  },
+];
+
+// Mock security settings
+const securitySettings: SecuritySettings = {
+  maxFailedAttempts: 3,
+  lockoutDuration: 15, // minutes
+  passwordExpiryDays: 90,
+  sessionTimeout: 30, // minutes
+};
+
+// Mock password requirements
+const passwordRequirements: PasswordRequirements = {
+  minLength: 8,
+  requireUppercase: true,
+  requireLowercase: true,
+  requireNumbers: true,
+  requireSpecialChars: true,
+};
 
 class ATMService {
-  private users: User[] = [];
-  private transactions: Transaction[] = [];
-  private auditLogs: AuditLog[] = [];
-  private sessions: ATMSession[] = [];
-  private fraudAlerts: FraudAlert[] = [];
-  private loans: Loan[] = [];
-  private loanPayments: LoanPayment[] = [];
-  private adminActions: AdminAction[] = [];
-  private currentSession: ATMSession | null = null;
-  private passwordRequirements: PasswordRequirements = {
-    minLength: 8,
-    requireUppercase: true,
-    requireLowercase: true,
-    requireNumbers: true,
-    requireSpecialChars: true,
-  };
-  private securitySettings: SecuritySettings = {
-    maxFailedAttempts: 3,
-    lockoutDuration: 30,
-    passwordExpiryDays: 90,
-    sessionTimeout: 15,
-  };
+  currentUser: User | null = null;
+  currentSession: ATMSession | null = null;
 
   constructor() {
-    this.initializeSampleData();
+    // Load data from localStorage if available
+    const storedUsers = localStorage.getItem('users');
+    if (storedUsers) {
+      users = JSON.parse(storedUsers);
+    }
+
+    const storedTransactions = localStorage.getItem('transactions');
+    if (storedTransactions) {
+      transactions = JSON.parse(storedTransactions);
+    }
+
+    const storedLoans = localStorage.getItem('loans');
+    if (storedLoans) {
+      loans = JSON.parse(storedLoans);
+    }
+
+    const storedAuditLogs = localStorage.getItem('auditLogs');
+    if (storedAuditLogs) {
+      auditLogs = JSON.parse(storedAuditLogs);
+    }
+
+    const storedFraudAlerts = localStorage.getItem('fraudAlerts');
+    if (storedFraudAlerts) {
+      fraudAlerts = JSON.parse(storedFraudAlerts);
+    }
   }
 
-  private initializeSampleData() {
-    // Sample users with KES amounts, usernames, passwords, and card details
-    this.users = [
-      {
-        id: '1',
-        accountNumber: '1234567890',
-        username: 'john.kimani',
-        password: 'SecurePass123!',
-        name: 'John Kimani',
-        email: 'john@example.com',
-        pin: '1234',
-        balance: 125000,
-        role: 'USER',
-        isLocked: false,
-        failedAttempts: 0,
-        failedPasswordAttempts: 0,
-        createdAt: new Date().toISOString(),
-        creditScore: 750,
-        monthlyIncome: 85000,
-        cardNumber: '4532 1234 5678 9012',
-        expiryDate: '12/27',
-        cvv: '123',
-        cardType: 'VISA',
-        mustChangePassword: false,
-      },
-      {
-        id: '2',
-        accountNumber: '0987654321',
-        username: 'grace.wanjiku',
-        password: 'MyPassword456@',
-        name: 'Grace Wanjiku',
-        email: 'grace@example.com',
-        pin: '5678',
-        balance: 87500,
-        role: 'USER',
-        isLocked: false,
-        failedAttempts: 0,
-        failedPasswordAttempts: 0,
-        createdAt: new Date().toISOString(),
-        creditScore: 680,
-        monthlyIncome: 65000,
-        cardNumber: '5555 4444 3333 2222',
-        expiryDate: '09/26',
-        cvv: '456',
-        cardType: 'MASTERCARD',
-        mustChangePassword: false,
-      },
-      {
-        id: 'admin',
-        accountNumber: 'ADMIN001',
-        username: 'admin',
-        password: 'AdminPass999!',
-        name: 'ATM Administrator',
-        email: 'admin@atm.com',
-        pin: '0000',
-        balance: 0,
-        role: 'ADMIN',
-        isLocked: false,
-        failedAttempts: 0,
-        failedPasswordAttempts: 0,
-        createdAt: new Date().toISOString(),
-        cardNumber: '0000 0000 0000 0000',
-        expiryDate: '12/99',
-        cvv: '000',
-        cardType: 'VISA',
-        mustChangePassword: false,
-      }
-    ];
+  // Authentication methods
+  authenticate = async (username: string, password: string): Promise<{ success: boolean; message: string; user?: User }> => {
+    const user = users.find(u => u.username === username);
 
-    // Sample loans
-    this.loans = [
-      {
-        id: 'loan_1',
-        userId: '1',
-        type: 'PERSONAL',
-        principal: 50000,
-        interestRate: 12.5,
-        termMonths: 12,
-        monthlyPayment: 4500,
-        totalAmount: 54000,
-        remainingBalance: 45000,
-        status: 'ACTIVE',
-        applicationDate: new Date(Date.now() - 2592000000).toISOString(),
-        approvalDate: new Date(Date.now() - 2419200000).toISOString(),
-        disbursementDate: new Date(Date.now() - 2419200000).toISOString(),
-        nextPaymentDate: new Date(Date.now() + 604800000).toISOString(),
-        purpose: 'Business expansion',
-      }
-    ];
-
-    // Sample transactions
-    this.transactions = [
-      {
-        id: '1',
-        userId: '1',
-        type: 'WITHDRAWAL',
-        amount: 5000,
-        description: 'Cash withdrawal',
-        timestamp: new Date(Date.now() - 86400000).toISOString(),
-        status: 'SUCCESS'
-      },
-      {
-        id: '2',
-        userId: '1',
-        type: 'LOAN_DISBURSEMENT',
-        amount: 50000,
-        description: 'Personal loan disbursement',
-        timestamp: new Date(Date.now() - 2419200000).toISOString(),
-        status: 'SUCCESS',
-        loanId: 'loan_1'
-      }
-    ];
-  }
-
-  // Enhanced Authentication with username/password
-  async authenticate(username: string, password: string): Promise<{ success: boolean; user?: User; message: string }> {
-    const user = this.users.find(u => u.username === username);
-    
     if (!user) {
-      this.logAudit('LOGIN_FAILED', `Failed login attempt for username: ${username}`);
-      return { success: false, message: 'Invalid username or password' };
+      this.addAuditLog('LOGIN_FAILED', `Login failed for username: ${username} - User not found`);
+      return { success: false, message: 'Invalid credentials' };
     }
 
-    if (user.isLocked) {
-      this.logAudit('LOGIN_BLOCKED', `Login attempt for locked account: ${username}`, user.id);
-      return { 
-        success: false, 
-        message: `Account is locked${user.lockReason ? ': ' + user.lockReason : ''}. Please contact customer service.` 
-      };
-    }
-
-    // Check for lockout due to failed password attempts
-    if (this.isAccountTemporarilyLocked(user)) {
-      return { 
-        success: false, 
-        message: `Account temporarily locked due to multiple failed attempts. Try again later.` 
-      };
+    const { isLocked, reason } = this.checkAccountLock(user);
+    if (isLocked) {
+      this.addAuditLog('LOGIN_FAILED', `Login failed for username: ${username} - Account locked: ${reason}`);
+      return { success: false, message: `Account locked: ${reason}` };
     }
 
     if (user.password !== password) {
-      user.failedPasswordAttempts++;
-      user.lastPasswordAttempt = new Date().toISOString();
-      
-      if (user.failedPasswordAttempts >= this.securitySettings.maxFailedAttempts) {
-        user.isLocked = true;
-        user.lockReason = 'Multiple failed password attempts';
-        user.lockDate = new Date().toISOString();
-        this.logAudit('ACCOUNT_LOCKED', `Account locked due to multiple failed password attempts`, user.id);
-        return { success: false, message: 'Account locked due to multiple failed password attempts' };
+      this.updateFailedPasswordAttempts(user.id);
+      const { isLocked, reason } = this.checkAccountLock(user);
+      if (isLocked) {
+        this.addAuditLog('LOGIN_FAILED', `Login failed for username: ${username} - Account locked: ${reason}`);
+        return { success: false, message: `Account locked: ${reason}` };
       }
-      
-      this.logAudit('LOGIN_FAILED', `Invalid password for username: ${username}`, user.id);
-      return { 
-        success: false, 
-        message: `Invalid username or password. ${this.securitySettings.maxFailedAttempts - user.failedPasswordAttempts} attempts remaining.` 
-      };
+      this.addAuditLog('LOGIN_FAILED', `Login failed for username: ${username} - Incorrect password`);
+      return { success: false, message: 'Invalid credentials' };
     }
 
-    // Reset failed attempts on successful login
+    // Check if password needs to be changed
+    if (user.mustChangePassword) {
+      this.currentUser = user;
+      this.addAuditLog('LOGIN_SUCCESS', `Login successful for username: ${username} - Must change password`);
+      return { success: true, message: 'Must change password', user: user };
+    }
+
+    // Successful login
     user.failedPasswordAttempts = 0;
-    user.failedAttempts = 0;
+    user.lastPasswordAttempt = undefined;
     user.lastLogin = new Date().toISOString();
+    this.currentUser = user;
+    this.saveUsers();
 
-    // Create session
-    this.currentSession = {
-      sessionId: Math.random().toString(36).substr(2, 9),
-      userId: user.id,
-      startTime: new Date().toISOString(),
-      isActive: true
-    };
-    this.sessions.push(this.currentSession);
+    // Start ATM session
+    this.startSession(user.id);
 
-    this.logAudit('LOGIN_SUCCESS', `Successful login`, user.id);
-    return { success: true, user, message: 'Login successful' };
-  }
+    this.addAuditLog('LOGIN_SUCCESS', `Login successful for username: ${username}`);
+    return { success: true, message: 'Login successful', user: user };
+  };
 
-  // PIN verification for transactions
-  async verifyPin(pin: string): Promise<{ success: boolean; message: string }> {
-    if (!this.currentSession || !this.currentSession.isActive) {
-      return { success: false, message: 'No active session' };
+  verifyPin = async (pin: string): Promise<{ success: boolean; message: string }> => {
+    if (!this.currentUser) {
+      return { success: false, message: 'No user logged in' };
     }
 
-    const user = this.getCurrentUser();
-    if (!user) return { success: false, message: 'User not found' };
-
-    if (user.pin !== pin) {
-      user.failedAttempts++;
-      if (user.failedAttempts >= 3) {
-        user.isLocked = true;
-        user.lockReason = 'Multiple failed PIN attempts';
-        user.lockDate = new Date().toISOString();
-        this.logAudit('ACCOUNT_LOCKED', `Account locked due to multiple failed PIN attempts`, user.id);
-        return { success: false, message: 'Account locked due to multiple failed PIN attempts' };
-      }
-      this.logAudit('PIN_VERIFICATION_FAILED', `Invalid PIN attempt`, user.id);
-      return { success: false, message: `Invalid PIN. ${3 - user.failedAttempts} attempts remaining.` };
+    if (this.currentUser.pin !== pin) {
+      this.updateFailedPinAttempts(this.currentUser.id);
+      return { success: false, message: 'Incorrect PIN' };
     }
 
-    user.failedAttempts = 0;
     return { success: true, message: 'PIN verified successfully' };
-  }
+  };
 
-  // Password validation
-  validatePassword(password: string): { valid: boolean; errors: string[] } {
-    const errors: string[] = [];
-    const req = this.passwordRequirements;
-
-    if (password.length < req.minLength) {
-      errors.push(`Password must be at least ${req.minLength} characters long`);
+  logout = (): void => {
+    if (this.currentSession) {
+      this.endSession(this.currentSession.sessionId);
     }
+    this.currentUser = null;
+    localStorage.removeItem('currentUser');
+    this.addAuditLog('LOGOUT', 'User logged out');
+  };
 
-    if (req.requireUppercase && !/[A-Z]/.test(password)) {
-      errors.push('Password must contain at least one uppercase letter');
+  // Transaction methods
+  withdraw = async (amount: number): Promise<{ success: boolean; message: string; balance?: number }> => {
+    if (!this.currentUser) {
+      return { success: false, message: 'No user logged in' };
     }
-
-    if (req.requireLowercase && !/[a-z]/.test(password)) {
-      errors.push('Password must contain at least one lowercase letter');
-    }
-
-    if (req.requireNumbers && !/\d/.test(password)) {
-      errors.push('Password must contain at least one number');
-    }
-
-    if (req.requireSpecialChars && !/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
-      errors.push('Password must contain at least one special character');
-    }
-
-    return { valid: errors.length === 0, errors };
-  }
-
-  // Change password
-  async changePassword(currentPassword: string, newPassword: string): Promise<{ success: boolean; message: string }> {
-    if (!this.currentSession || !this.currentSession.isActive) {
-      return { success: false, message: 'No active session' };
-    }
-
-    const user = this.getCurrentUser();
-    if (!user) return { success: false, message: 'User not found' };
-
-    if (user.password !== currentPassword) {
-      return { success: false, message: 'Current password is incorrect' };
-    }
-
-    const validation = this.validatePassword(newPassword);
-    if (!validation.valid) {
-      return { success: false, message: validation.errors.join('. ') };
-    }
-
-    user.password = newPassword;
-    user.passwordLastChanged = new Date().toISOString();
-    user.mustChangePassword = false;
-    
-    this.logAudit('PASSWORD_CHANGED', 'Password changed successfully', user.id);
-    return { success: true, message: 'Password changed successfully' };
-  }
-
-  // Check if account is temporarily locked
-  private isAccountTemporarilyLocked(user: User): boolean {
-    if (!user.lastPasswordAttempt || user.failedPasswordAttempts < this.securitySettings.maxFailedAttempts) {
-      return false;
-    }
-
-    const lockoutTime = new Date(user.lastPasswordAttempt).getTime() + (this.securitySettings.lockoutDuration * 60 * 1000);
-    return Date.now() < lockoutTime;
-  }
-
-  // Enhanced Admin Functions
-  lockAccount(userId: string, reason: string): boolean {
-    const user = this.users.find(u => u.id === userId);
-    if (user && user.role !== 'ADMIN') {
-      user.isLocked = true;
-      user.lockReason = reason;
-      user.lockDate = new Date().toISOString();
-      this.logAdminAction('SUSPEND_USER', userId, undefined, `Account locked: ${reason}`, reason);
-      this.logAudit('ACCOUNT_LOCKED', `Account locked by admin: ${reason}`, userId);
-      return true;
-    }
-    return false;
-  }
-
-  unlockAccount(userId: string, reason?: string): boolean {
-    const user = this.users.find(u => u.id === userId);
-    if (user) {
-      user.isLocked = false;
-      user.failedAttempts = 0;
-      user.failedPasswordAttempts = 0;
-      user.lockReason = undefined;
-      user.lockDate = undefined;
-      this.logAdminAction('UNLOCK_ACCOUNT', userId, undefined, `Account unlocked`, reason);
-      this.logAudit('ACCOUNT_UNLOCKED', `Account unlocked by admin`, userId);
-      return true;
-    }
-    return false;
-  }
-
-  resetUserPassword(userId: string, newPassword: string, reason?: string): boolean {
-    const user = this.users.find(u => u.id === userId);
-    if (user) {
-      const validation = this.validatePassword(newPassword);
-      if (!validation.valid) return false;
-
-      user.password = newPassword;
-      user.passwordLastChanged = new Date().toISOString();
-      user.mustChangePassword = true;
-      user.failedPasswordAttempts = 0;
-      this.logAdminAction('RESET_PASSWORD', userId, undefined, `Password reset`, reason);
-      this.logAudit('PASSWORD_RESET', `Password reset by admin`, userId);
-      return true;
-    }
-    return false;
-  }
-
-  // Get password requirements
-  getPasswordRequirements(): PasswordRequirements {
-    return this.passwordRequirements;
-  }
-
-  // Get security settings
-  getSecuritySettings(): SecuritySettings {
-    return this.securitySettings;
-  }
-
-  // Cash Withdrawal
-  async withdraw(amount: number): Promise<{ success: boolean; message: string; balance?: number }> {
-    if (!this.currentSession || !this.currentSession.isActive) {
-      return { success: false, message: 'No active session' };
-    }
-
-    const user = this.getCurrentUser();
-    if (!user) return { success: false, message: 'User not found' };
 
     if (amount <= 0) {
-      return { success: false, message: 'Invalid amount' };
+      return { success: false, message: 'Invalid withdrawal amount' };
     }
 
-    if (amount > user.balance) {
-      this.logTransaction(user.id, 'WITHDRAWAL', amount, 'Insufficient funds withdrawal attempt', 'FAILED');
-      return { success: false, message: 'Insufficient funds' };
+    if (amount > this.currentUser.balance) {
+      return { success: false, message: 'Insufficient balance' };
     }
 
-    if (this.detectFraud(user.id, 'WITHDRAWAL', amount)) {
-      this.createFraudAlert(user.id, 'SUSPICIOUS_AMOUNT', `Large withdrawal attempt: KES ${amount.toLocaleString()}`);
-      return { success: false, message: 'Transaction blocked for security reasons' };
+    this.currentUser.balance -= amount;
+    this.saveUsers();
+
+    this.addTransaction({
+      type: 'WITHDRAWAL',
+      amount: amount,
+      description: `Withdrawal of KES ${amount.toLocaleString()}`
+    });
+
+    this.addAuditLog('WITHDRAWAL', `User withdrew KES ${amount.toLocaleString()}`);
+    return { success: true, message: 'Withdrawal successful', balance: this.currentUser.balance };
+  };
+
+  deposit = async (amount: number): Promise<{ success: boolean; message: string; balance?: number }> => {
+    if (!this.currentUser) {
+      return { success: false, message: 'No user logged in' };
     }
-
-    user.balance -= amount;
-    this.logTransaction(user.id, 'WITHDRAWAL', amount, `Cash withdrawal of KES ${amount.toLocaleString()}`, 'SUCCESS');
-    this.logAudit('WITHDRAWAL', `Withdrew KES ${amount.toLocaleString()}`, user.id);
-
-    return { success: true, message: `Successfully withdrew KES ${amount.toLocaleString()}`, balance: user.balance };
-  }
-
-  // Cash Deposit
-  async deposit(amount: number): Promise<{ success: boolean; message: string; balance?: number }> {
-    if (!this.currentSession || !this.currentSession.isActive) {
-      return { success: false, message: 'No active session' };
-    }
-
-    const user = this.getCurrentUser();
-    if (!user) return { success: false, message: 'User not found' };
 
     if (amount <= 0) {
-      return { success: false, message: 'Invalid amount' };
+      return { success: false, message: 'Invalid deposit amount' };
     }
 
-    user.balance += amount;
-    this.logTransaction(user.id, 'DEPOSIT', amount, `Cash deposit of KES ${amount.toLocaleString()}`, 'SUCCESS');
-    this.logAudit('DEPOSIT', `Deposited KES ${amount.toLocaleString()}`, user.id);
+    this.currentUser.balance += amount;
+    this.saveUsers();
 
-    return { success: true, message: `Successfully deposited KES ${amount.toLocaleString()}`, balance: user.balance };
-  }
+    this.addTransaction({
+      type: 'DEPOSIT',
+      amount: amount,
+      description: `Deposit of KES ${amount.toLocaleString()}`
+    });
 
-  // Balance Inquiry
-  async getBalance(): Promise<{ success: boolean; balance?: number; message: string }> {
-    if (!this.currentSession || !this.currentSession.isActive) {
-      return { success: false, message: 'No active session' };
+    this.addAuditLog('DEPOSIT', `User deposited KES ${amount.toLocaleString()}`);
+    return { success: true, message: 'Deposit successful', balance: this.currentUser.balance };
+  };
+
+  getBalance = async (): Promise<{ success: boolean; message: string; balance?: number }> => {
+    if (!this.currentUser) {
+      return { success: false, message: 'No user logged in' };
     }
 
-    const user = this.getCurrentUser();
-    if (!user) return { success: false, message: 'User not found' };
+    this.addTransaction({
+      type: 'BALANCE_INQUIRY',
+      amount: 0,
+      description: 'Balance inquiry'
+    });
 
-    this.logTransaction(user.id, 'BALANCE_INQUIRY', 0, 'Balance inquiry', 'SUCCESS');
-    this.logAudit('BALANCE_INQUIRY', 'Balance checked', user.id);
+    this.addAuditLog('BALANCE_INQUIRY', 'User checked their balance');
+    return { success: true, message: 'Balance retrieved successfully', balance: this.currentUser.balance };
+  };
 
-    return { success: true, balance: user.balance, message: 'Balance retrieved successfully' };
-  }
-
-  // Funds Transfer
-  async transfer(toAccountNumber: string, amount: number): Promise<{ success: boolean; message: string; balance?: number }> {
-    if (!this.currentSession || !this.currentSession.isActive) {
-      return { success: false, message: 'No active session' };
+  transfer = async (recipientAccount: string, amount: number): Promise<{ success: boolean; message: string; balance?: number }> => {
+    if (!this.currentUser) {
+      return { success: false, message: 'No user logged in' };
     }
 
-    const fromUser = this.getCurrentUser();
-    const toUser = this.users.find(u => u.accountNumber === toAccountNumber);
-
-    if (!fromUser) return { success: false, message: 'User not found' };
-    if (!toUser) return { success: false, message: 'Recipient account not found' };
-    if (amount <= 0) return { success: false, message: 'Invalid amount' };
-    if (amount > fromUser.balance) return { success: false, message: 'Insufficient funds' };
-    if (fromUser.accountNumber === toAccountNumber) return { success: false, message: 'Cannot transfer to same account' };
-
-    fromUser.balance -= amount;
-    toUser.balance += amount;
-
-    this.logTransaction(fromUser.id, 'TRANSFER', amount, `Transfer to ${toAccountNumber}`, 'SUCCESS', fromUser.accountNumber, toAccountNumber);
-    this.logAudit('TRANSFER', `Transferred KES ${amount.toLocaleString()} to ${toAccountNumber}`, fromUser.id);
-
-    return { success: true, message: `Successfully transferred KES ${amount.toLocaleString()} to ${toAccountNumber}`, balance: fromUser.balance };
-  }
-
-  // PIN Change
-  async changePin(currentPin: string, newPin: string): Promise<{ success: boolean; message: string }> {
-    if (!this.currentSession || !this.currentSession.isActive) {
-      return { success: false, message: 'No active session' };
+    if (amount <= 0) {
+      return { success: false, message: 'Invalid transfer amount' };
     }
 
-    const user = this.getCurrentUser();
-    if (!user) return { success: false, message: 'User not found' };
+    if (amount > this.currentUser.balance) {
+      return { success: false, message: 'Insufficient balance' };
+    }
 
-    if (user.pin !== currentPin) {
+    const recipient = users.find(u => u.accountNumber === recipientAccount);
+    if (!recipient) {
+      return { success: false, message: 'Recipient account not found' };
+    }
+
+    this.currentUser.balance -= amount;
+    recipient.balance += amount;
+    this.saveUsers();
+
+    this.addTransaction({
+      type: 'TRANSFER',
+      amount: amount,
+      description: `Transfer of KES ${amount.toLocaleString()} to account ${recipientAccount}`,
+      toAccount: recipientAccount,
+      fromAccount: this.currentUser.accountNumber
+    });
+
+    this.addAuditLog('TRANSFER', `User transferred KES ${amount.toLocaleString()} to account ${recipientAccount}`);
+    return { success: true, message: 'Transfer successful', balance: this.currentUser.balance };
+  };
+
+  // PIN management
+  changePin = async (currentPin: string, newPin: string): Promise<{ success: boolean; message: string }> => {
+    if (!this.currentUser) {
+      return { success: false, message: 'No user logged in' };
+    }
+
+    if (this.currentUser.pin !== currentPin) {
+      this.updateFailedPinAttempts(this.currentUser.id);
       return { success: false, message: 'Current PIN is incorrect' };
     }
 
-    if (newPin.length !== 4 || !/^\d{4}$/.test(newPin)) {
-      return { success: false, message: 'PIN must be 4 digits' };
-    }
+    // Update PIN
+    this.currentUser.pin = newPin;
+    this.saveUsers();
 
-    user.pin = newPin;
-    this.logTransaction(user.id, 'PIN_CHANGE', 0, 'PIN changed successfully', 'SUCCESS');
-    this.logAudit('PIN_CHANGE', 'PIN changed', user.id);
+    this.addTransaction({
+      type: 'PIN_CHANGE',
+      amount: 0,
+      description: 'PIN changed successfully'
+    });
+
+    this.addAuditLog('PIN_CHANGE', 'User changed their PIN');
 
     return { success: true, message: 'PIN changed successfully' };
-  }
+  };
 
-  // Bill Payment
-  async payBill(billId: string, amount: number): Promise<{ success: boolean; message: string; balance?: number }> {
-    if (!this.currentSession || !this.currentSession.isActive) {
-      return { success: false, message: 'No active session' };
+  // Password management - Remove duplicate and fix
+  changePassword = async (currentPassword: string, newPassword: string): Promise<{ success: boolean; message: string }> => {
+    if (!this.currentUser) {
+      return { success: false, message: 'No user logged in' };
     }
 
-    const user = this.getCurrentUser();
-    if (!user) return { success: false, message: 'User not found' };
+    if (this.currentUser.password !== currentPassword) {
+      this.updateFailedPasswordAttempts(this.currentUser.id);
+      return { success: false, message: 'Current password is incorrect' };
+    }
 
-    if (amount <= 0) return { success: false, message: 'Invalid amount' };
-    if (amount > user.balance) return { success: false, message: 'Insufficient funds' };
+    // Validate new password
+    const validation = this.validatePassword(newPassword);
+    if (!validation.isValid) {
+      return { success: false, message: validation.message };
+    }
 
-    user.balance -= amount;
-    this.logTransaction(user.id, 'BILL_PAYMENT', amount, `Bill payment: ${billId}`, 'SUCCESS');
-    this.logAudit('BILL_PAYMENT', `Paid bill ${billId}: KES ${amount.toLocaleString()}`, user.id);
+    // Update password
+    this.currentUser.password = newPassword;
+    this.currentUser.passwordLastChanged = new Date().toISOString();
+    this.currentUser.mustChangePassword = false;
+    this.saveUsers();
 
-    return { success: true, message: `Bill payment of KES ${amount.toLocaleString()} successful`, balance: user.balance };
-  }
+    this.addAuditLog('PASSWORD_CHANGE', 'User changed their password');
 
-  // Transaction History
-  getTransactionHistory(limit: number = 10): Transaction[] {
-    if (!this.currentSession || !this.currentSession.isActive) {
+    return { success: true, message: 'Password changed successfully' };
+  };
+
+  // Bill payment
+  payBill = async (billId: string, amount: number): Promise<{ success: boolean; message: string; balance?: number }> => {
+    if (!this.currentUser) {
+      return { success: false, message: 'No user logged in' };
+    }
+
+    const bill = bills.find(b => b.id === billId);
+    if (!bill) {
+      return { success: false, message: 'Bill not found' };
+    }
+
+    if (amount <= 0) {
+      return { success: false, message: 'Invalid payment amount' };
+    }
+
+    if (amount > this.currentUser.balance) {
+      return { success: false, message: 'Insufficient balance' };
+    }
+
+    this.currentUser.balance -= amount;
+    this.saveUsers();
+
+    this.addTransaction({
+      type: 'BILL_PAYMENT',
+      amount: amount,
+      description: `Payment of KES ${amount.toLocaleString()} for ${bill.name}`
+    });
+
+    this.addAuditLog('BILL_PAYMENT', `User paid KES ${amount.toLocaleString()} for bill ${bill.name}`);
+    return { success: true, message: 'Bill payment successful', balance: this.currentUser.balance };
+  };
+
+  getAvailableBills = (): Bill[] => {
+    return bills;
+  };
+
+  // Transaction history
+  getTransactionHistory = (): Transaction[] => {
+    if (!this.currentUser) {
       return [];
     }
+    return transactions.filter(t => t.userId === this.currentUser!.id);
+  };
 
-    return this.transactions
-      .filter(t => t.userId === this.currentSession!.userId)
-      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-      .slice(0, limit);
-  }
-
-  // Get available bills
-  getAvailableBills(): Bill[] {
-    return [
-      { id: 'KPLC001', type: 'UTILITY', name: 'Kenya Power', amount: 2500, dueDate: '2024-07-15' },
-      { id: 'NAIROBI_WATER', type: 'UTILITY', name: 'Nairobi Water', amount: 1200, dueDate: '2024-07-20' },
-      { id: 'SAFARICOM', type: 'SUBSCRIPTION', name: 'Safaricom Postpaid', amount: 3000, dueDate: '2024-07-10' },
-      { id: 'DSTV', type: 'SUBSCRIPTION', name: 'DSTV Premium', amount: 4500, dueDate: '2024-07-25' }
-    ];
-  }
-
-  // Loan Application
-  async applyForLoan(
+  // Loan methods
+  applyForLoan = async (
     type: Loan['type'],
     amount: number,
     termMonths: number,
     purpose: string,
     collateral?: string
-  ): Promise<{ success: boolean; message: string; loanId?: string }> {
-    if (!this.currentSession || !this.currentSession.isActive) {
-      return { success: false, message: 'No active session' };
+  ): Promise<{ success: boolean; message: string; loan?: Loan }> => {
+    if (!this.currentUser) {
+      return { success: false, message: 'No user logged in' };
     }
 
-    const user = this.getCurrentUser();
-    if (!user) return { success: false, message: 'User not found' };
-
-    if (amount <= 0 || amount > 500000) {
-      return { success: false, message: 'Invalid loan amount. Maximum loan is KES 500,000' };
+    if (amount <= 0) {
+      return { success: false, message: 'Invalid loan amount' };
     }
 
-    if (termMonths < 1 || termMonths > 60) {
-      return { success: false, message: 'Loan term must be between 1 and 60 months' };
-    }
-
-    if (!user.creditScore || user.creditScore < 600) {
-      return { success: false, message: 'Credit score too low for loan approval' };
-    }
-
-    if (!user.monthlyIncome || (amount / termMonths) > (user.monthlyIncome * 0.4)) {
-      return { success: false, message: 'Loan amount exceeds affordable payment capacity' };
-    }
-
-    if (amount > 200000) {
-      this.createFraudAlert(user.id, 'LARGE_LOAN_REQUEST', `Large loan application: KES ${amount.toLocaleString()}`);
-    }
-
-    const interestRate = this.calculateInterestRate(user.creditScore, type);
+    const interestRate = this.calculateInterestRate(type, this.currentUser.creditScore);
     const monthlyPayment = this.calculateMonthlyPayment(amount, interestRate, termMonths);
     const totalAmount = monthlyPayment * termMonths;
 
-    const loan: Loan = {
-      id: Math.random().toString(36).substr(2, 9),
-      userId: user.id,
-      type,
+    const newLoan: Loan = {
+      id: Math.random().toString(36).substring(2, 15),
+      userId: this.currentUser.id,
+      type: type,
       principal: amount,
-      interestRate,
-      termMonths,
-      monthlyPayment,
-      totalAmount,
+      interestRate: interestRate,
+      termMonths: termMonths,
+      monthlyPayment: monthlyPayment,
+      totalAmount: totalAmount,
       remainingBalance: totalAmount,
       status: 'PENDING',
       applicationDate: new Date().toISOString(),
-      purpose,
-      collateral
+      purpose: purpose,
+      collateral: collateral
     };
 
-    this.loans.push(loan);
-    this.logAudit('LOAN_APPLICATION', `Applied for ${type} loan of KES ${amount.toLocaleString()}`, user.id);
+    loans.push(newLoan);
+    this.saveLoans();
 
-    return {
-      success: true,
-      message: `Loan application submitted successfully. Application ID: ${loan.id}`,
-      loanId: loan.id
-    };
-  }
+    this.addAuditLog('LOAN_APPLICATION', `User applied for a ${type} loan of KES ${amount.toLocaleString()}`);
+    return { success: true, message: 'Loan application submitted successfully', loan: newLoan };
+  };
 
-  // Loan Payment
-  async makePayment(loanId: string, amount: number): Promise<{ success: boolean; message: string; remainingBalance?: number }> {
-    if (!this.currentSession || !this.currentSession.isActive) {
-      return { success: false, message: 'No active session' };
+  getUserLoans = (): Loan[] => {
+    if (!this.currentUser) {
+      return [];
+    }
+    return loans.filter(loan => loan.userId === this.currentUser!.id);
+  };
+
+  makePayment = async (loanId: string, amount: number): Promise<{ success: boolean; message: string; balance?: number }> => {
+    if (!this.currentUser) {
+      return { success: false, message: 'No user logged in' };
     }
 
-    const user = this.getCurrentUser();
-    if (!user) return { success: false, message: 'User not found' };
-
-    const loan = this.loans.find(l => l.id === loanId && l.userId === user.id);
-    if (!loan) return { success: false, message: 'Loan not found' };
-
-    if (loan.status !== 'ACTIVE') {
-      return { success: false, message: 'Loan is not active' };
+    const loan = loans.find(l => l.id === loanId && l.userId === this.currentUser!.id);
+    if (!loan) {
+      return { success: false, message: 'Loan not found' };
     }
 
-    if (amount <= 0) return { success: false, message: 'Invalid payment amount' };
-    if (amount > user.balance) return { success: false, message: 'Insufficient funds' };
-
-    const monthlyInterest = (loan.remainingBalance * loan.interestRate / 100) / 12;
-    const principalPortion = Math.min(amount - monthlyInterest, loan.remainingBalance - monthlyInterest);
-    const interestPortion = amount - principalPortion;
-
-    loan.remainingBalance -= principalPortion;
-    user.balance -= amount;
-
-    if (loan.remainingBalance <= 0) {
-      loan.status = 'COMPLETED';
-      loan.remainingBalance = 0;
+    if (amount <= 0) {
+      return { success: false, message: 'Invalid payment amount' };
     }
 
+    if (amount > this.currentUser.balance) {
+      return { success: false, message: 'Insufficient balance' };
+    }
+
+    if (amount > loan.remainingBalance) {
+      return { success: false, message: 'Payment amount exceeds remaining balance' };
+    }
+
+    this.currentUser.balance -= amount;
+    loan.remainingBalance -= amount;
+
+    // For simplicity, assume the entire amount goes to principal
+    // In a real-world scenario, you'd calculate principal and interest portions
     const payment: LoanPayment = {
-      id: Math.random().toString(36).substr(2, 9),
-      loanId,
-      amount,
+      id: Math.random().toString(36).substring(2, 15),
+      loanId: loan.id,
+      amount: amount,
       paymentDate: new Date().toISOString(),
-      principalPortion,
-      interestPortion,
+      principalPortion: amount,
+      interestPortion: 0,
       remainingBalance: loan.remainingBalance,
       status: 'SUCCESS'
     };
 
-    this.loanPayments.push(payment);
-    this.logTransaction(user.id, 'LOAN_PAYMENT', amount, `Loan payment for ${loanId}`, 'SUCCESS', undefined, undefined, loanId);
-    this.logAudit('LOAN_PAYMENT', `Made payment of KES ${amount.toLocaleString()} for loan ${loanId}`, user.id);
-
-    return {
-      success: true,
-      message: `Payment of KES ${amount.toLocaleString()} processed successfully`,
-      remainingBalance: loan.remainingBalance
-    };
-  }
-
-  // Get user loans
-  getUserLoans(): Loan[] {
-    if (!this.currentSession || !this.currentSession.isActive) {
-      return [];
+    if (loan.remainingBalance === 0) {
+      loan.status = 'COMPLETED';
     }
 
-    return this.loans.filter(l => l.userId === this.currentSession!.userId);
-  }
+    this.saveUsers();
+    this.saveLoans();
 
-  // Logout
-  logout(): void {
-    if (this.currentSession) {
-      this.currentSession.isActive = false;
-      this.currentSession.endTime = new Date().toISOString();
-      this.logAudit('LOGOUT', 'User logged out', this.currentSession.userId);
-      this.currentSession = null;
+    this.addTransaction({
+      type: 'LOAN_PAYMENT',
+      amount: amount,
+      description: `Loan payment of KES ${amount.toLocaleString()} for loan ID ${loanId}`,
+      loanId: loanId
+    });
+
+    this.addAuditLog('LOAN_PAYMENT', `User made a loan payment of KES ${amount.toLocaleString()} for loan ID ${loanId}`);
+    return { success: true, message: 'Loan payment successful', balance: this.currentUser.balance };
+  };
+
+  // Admin methods
+  getAllUsers = (): User[] => {
+    return users;
+  };
+
+  getAllTransactions = (): Transaction[] => {
+    return transactions;
+  };
+
+  getAuditLogs = (): AuditLog[] => {
+    return auditLogs;
+  };
+
+  getFraudAlerts = (): FraudAlert[] => {
+    return fraudAlerts;
+  };
+
+  unlockAccount = (userId: string): boolean => {
+    const user = users.find(u => u.id === userId);
+    if (!user) return false;
+
+    user.isLocked = false;
+    user.lockReason = undefined;
+    user.lockDate = undefined;
+    user.failedAttempts = 0;
+    this.saveUsers();
+
+    this.addAdminAction('UNLOCK_ACCOUNT', userId, 'Account unlocked by admin');
+    return true;
+  };
+
+  resetUserPassword = (userId: string, newPassword: string): boolean => {
+    const users = this.getUsers();
+    const user = users.find(u => u.id === userId);
+    
+    if (!user) return false;
+
+    user.password = newPassword;
+    user.passwordLastChanged = new Date().toISOString();
+    user.mustChangePassword = true;
+    user.failedPasswordAttempts = 0;
+    user.lastPasswordAttempt = undefined;
+
+    this.saveUsers();
+
+    this.addAdminAction('RESET_PIN', userId, 'Password reset by admin', 'Admin reset user password');
+
+    return true;
+  };
+
+  // Helper methods
+  private validatePassword = (password: string): { isValid: boolean; message: string } => {
+    if (password.length < passwordRequirements.minLength) {
+      return { isValid: false, message: `Password must be at least ${passwordRequirements.minLength} characters long` };
     }
-  }
-
-  // Admin functions
-  getAllUsers(): User[] {
-    return this.users;
-  }
-
-  getAllTransactions(): Transaction[] {
-    return this.transactions;
-  }
-
-  getAllLoans(): Loan[] {
-    return this.loans;
-  }
-
-  getAllLoanPayments(): LoanPayment[] {
-    return this.loanPayments;
-  }
-
-  getAuditLogs(): AuditLog[] {
-    return this.auditLogs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-  }
-
-  getFraudAlerts(): FraudAlert[] {
-    return this.fraudAlerts.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-  }
-
-  getAdminActions(): AdminAction[] {
-    return this.adminActions.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-  }
-
-  // Enhanced Admin Actions
-  unlockAccount(userId: string, reason?: string): boolean {
-    const user = this.users.find(u => u.id === userId);
-    if (user) {
-      user.isLocked = false;
-      user.failedAttempts = 0;
-      this.logAdminAction('UNLOCK_ACCOUNT', userId, undefined, `Account unlocked`, reason);
-      this.logAudit('ACCOUNT_UNLOCKED', `Account unlocked by admin`, userId);
-      return true;
+    if (passwordRequirements.requireUppercase && !/[A-Z]/.test(password)) {
+      return { isValid: false, message: 'Password must contain at least one uppercase letter' };
     }
-    return false;
-  }
+    if (passwordRequirements.requireLowercase && !/[a-z]/.test(password)) {
+      return { isValid: false, message: 'Password must contain at least one lowercase letter' };
+    }
+    if (passwordRequirements.requireNumbers && !/[0-9]/.test(password)) {
+      return { isValid: false, message: 'Password must contain at least one number' };
+    }
+    if (passwordRequirements.requireSpecialChars && !/[^a-zA-Z0-9]/.test(password)) {
+      return { isValid: false, message: 'Password must contain at least one special character' };
+    }
+    return { isValid: true, message: '' };
+  };
 
-  suspendUser(userId: string, reason: string): boolean {
-    const user = this.users.find(u => u.id === userId);
-    if (user && user.role !== 'ADMIN') {
+  private updateFailedAttempts = (userId: string): void => {
+    const user = users.find(u => u.id === userId);
+    if (!user) return;
+
+    user.failedAttempts++;
+    if (user.failedAttempts >= securitySettings.maxFailedAttempts) {
       user.isLocked = true;
-      this.logAdminAction('SUSPEND_USER', userId, undefined, `User suspended`, reason);
-      this.logAudit('USER_SUSPENDED', `User suspended by admin: ${reason}`, userId);
-      return true;
+      user.lockReason = 'Too many failed login attempts';
+      user.lockDate = new Date().toISOString();
+      this.addFraudAlert('MULTIPLE_ATTEMPTS', `Account locked due to multiple failed login attempts for user ${user.username}`, 'MEDIUM');
     }
-    return false;
-  }
+    this.saveUsers();
+  };
 
-  resetUserPin(userId: string, newPin: string, reason?: string): boolean {
-    const user = this.users.find(u => u.id === userId);
-    if (user && /^\d{4}$/.test(newPin)) {
-      user.pin = newPin;
+  private updateFailedPasswordAttempts = (userId: string): void => {
+    const user = users.find(u => u.id === userId);
+    if (!user) return;
+
+    user.failedPasswordAttempts++;
+    user.lastPasswordAttempt = new Date().toISOString();
+
+    if (user.failedPasswordAttempts >= securitySettings.maxFailedAttempts) {
+      user.isLocked = true;
+      user.lockReason = 'Too many failed password attempts';
+      user.lockDate = new Date().toISOString();
+      this.addFraudAlert('MULTIPLE_ATTEMPTS', `Account locked due to multiple failed password attempts for user ${user.username}`, 'HIGH');
+    }
+    this.saveUsers();
+  };
+
+  private updateFailedPinAttempts = (userId: string): void => {
+    const user = users.find(u => u.id === userId);
+    if (!user) return;
+
+    user.failedAttempts++; // General failed attempts counter
+    if (user.failedAttempts >= securitySettings.maxFailedAttempts) {
+      user.isLocked = true;
+      user.lockReason = 'Too many failed PIN attempts';
+      user.lockDate = new Date().toISOString();
+      this.addFraudAlert('MULTIPLE_ATTEMPTS', `Account locked due to multiple failed PIN attempts for user ${user.username}`, 'HIGH');
+    }
+    this.saveUsers();
+  };
+
+  private checkAccountLock = (user: User): { isLocked: boolean; reason?: string } => {
+    if (!user.isLocked) {
+      return { isLocked: false };
+    }
+
+    if (!user.lockDate) {
+      return { isLocked: true, reason: user.lockReason || 'Account is locked' };
+    }
+
+    const lockDate = new Date(user.lockDate);
+    const now = new Date();
+    const diff = now.getTime() - lockDate.getTime();
+    const minutes = Math.floor(diff / 60000);
+
+    if (minutes >= securitySettings.lockoutDuration) {
+      user.isLocked = false;
+      user.lockReason = undefined;
+      user.lockDate = undefined;
       user.failedAttempts = 0;
-      this.logAdminAction('RESET_PIN', userId, undefined, `PIN reset`, reason);
-      this.logAudit('PIN_RESET', `PIN reset by admin`, userId);
-      return true;
+      this.saveUsers();
+      return { isLocked: false };
     }
-    return false;
-  }
 
-  adjustUserBalance(userId: string, amount: number, reason: string): boolean {
-    const user = this.users.find(u => u.id === userId);
-    if (user) {
-      const oldBalance = user.balance;
-      user.balance += amount;
-      this.logAdminAction('ADJUST_BALANCE', userId, undefined, 
-        `Balance adjusted from KES ${oldBalance.toLocaleString()} to KES ${user.balance.toLocaleString()}`, reason);
-      this.logAudit('BALANCE_ADJUSTED', 
-        `Balance adjusted by KES ${amount.toLocaleString()} - Reason: ${reason}`, userId);
-      return true;
-    }
-    return false;
-  }
+    return { isLocked: true, reason: user.lockReason || 'Account is locked' };
+  };
 
-  approveLoan(loanId: string, reason?: string): boolean {
-    const loan = this.loans.find(l => l.id === loanId);
-    if (loan && loan.status === 'PENDING') {
-      loan.status = 'APPROVED';
-      loan.approvalDate = new Date().toISOString();
-      
-      const user = this.users.find(u => u.id === loan.userId);
-      if (user) {
-        user.balance += loan.principal;
-        loan.status = 'ACTIVE';
-        loan.disbursementDate = new Date().toISOString();
-        
-        const nextPayment = new Date();
-        nextPayment.setMonth(nextPayment.getMonth() + 1);
-        loan.nextPaymentDate = nextPayment.toISOString();
+  private addTransaction = (transaction: Omit<Transaction, 'id' | 'userId' | 'timestamp' | 'status'>): void => {
+    if (!this.currentUser) return;
 
-        this.logTransaction(loan.userId, 'LOAN_DISBURSEMENT', loan.principal, 
-          `${loan.type} loan disbursement`, 'SUCCESS', undefined, undefined, loanId);
-      }
-
-      this.logAdminAction('APPROVE_LOAN', loan.userId, loanId, 
-        `Loan approved and disbursed: KES ${loan.principal.toLocaleString()}`, reason);
-      this.logAudit('LOAN_APPROVED', `Loan ${loanId} approved and disbursed`, loan.userId);
-      return true;
-    }
-    return false;
-  }
-
-  rejectLoan(loanId: string, reason: string): boolean {
-    const loan = this.loans.find(l => l.id === loanId);
-    if (loan && loan.status === 'PENDING') {
-      loan.status = 'REJECTED';
-      this.logAdminAction('REJECT_LOAN', loan.userId, loanId, `Loan rejected`, reason);
-      this.logAudit('LOAN_REJECTED', `Loan ${loanId} rejected - Reason: ${reason}`, loan.userId);
-      return true;
-    }
-    return false;
-  }
-
-  resolveFraudAlert(alertId: string, resolution: string): boolean {
-    const alert = this.fraudAlerts.find(a => a.id === alertId);
-    if (alert) {
-      alert.resolved = true;
-      this.logAdminAction('RESOLVE_FRAUD_ALERT', alert.userId, undefined, 
-        `Fraud alert resolved: ${resolution}`, resolution);
-      this.logAudit('FRAUD_ALERT_RESOLVED', `Fraud alert ${alertId} resolved`, alert.userId);
-      return true;
-    }
-    return false;
-  }
-
-  // Private helper methods
-  private getCurrentUser(): User | undefined {
-    if (!this.currentSession) return undefined;
-    return this.users.find(u => u.id === this.currentSession!.userId);
-  }
-
-  private logTransaction(userId: string, type: Transaction['type'], amount: number, description: string, status: Transaction['status'], fromAccount?: string, toAccount?: string, loanId?: string): void {
-    const transaction: Transaction = {
-      id: Math.random().toString(36).substr(2, 9),
-      userId,
-      type,
-      amount,
-      description,
+    const newTransaction: Transaction = {
+      id: Math.random().toString(36).substring(2, 15),
+      userId: this.currentUser.id,
       timestamp: new Date().toISOString(),
-      status,
-      fromAccount,
-      toAccount,
-      loanId
+      status: 'SUCCESS',
+      ...transaction
     };
-    this.transactions.push(transaction);
-  }
+    transactions.push(newTransaction);
+    this.saveTransactions();
+  };
 
-  private logAudit(action: string, details: string, userId?: string): void {
-    const log: AuditLog = {
-      id: Math.random().toString(36).substr(2, 9),
-      userId,
-      action,
-      details,
-      timestamp: new Date().toISOString(),
-      ipAddress: '127.0.0.1',
-      userAgent: 'ATM-System'
+  private addAuditLog = (action: string, details: string): void => {
+    const newLog: AuditLog = {
+      id: Math.random().toString(36).substring(2, 15),
+      userId: this.currentUser?.id,
+      action: action,
+      details: details,
+      timestamp: new Date().toISOString()
     };
-    this.auditLogs.push(log);
-  }
+    auditLogs.push(newLog);
+    localStorage.setItem('auditLogs', JSON.stringify(auditLogs));
+  };
 
-  private logAdminAction(action: AdminAction['action'], targetUserId?: string, 
-                        targetLoanId?: string, details?: string, reason?: string): void {
-    if (!this.currentSession) return;
-    
-    const adminAction: AdminAction = {
-      id: Math.random().toString(36).substr(2, 9),
-      adminId: this.currentSession.userId,
-      action,
-      targetUserId,
-      targetLoanId,
-      details: details || '',
+  private addAdminAction = (
+    action: AdminAction['action'],
+    targetUserId: string | undefined,
+    details: string,
+    reason?: string
+  ): void => {
+    const newAction: AdminAction = {
+      id: Math.random().toString(36).substring(2, 15),
+      adminId: this.currentUser?.id || 'SYSTEM',
+      action: action,
+      targetUserId: targetUserId,
+      details: details,
       timestamp: new Date().toISOString(),
-      reason
+      reason: reason
     };
-    this.adminActions.push(adminAction);
-  }
+    auditLogs.push(newAction);
+    localStorage.setItem('auditLogs', JSON.stringify(auditLogs));
+  };
 
-  private detectFraud(userId: string, type: string, amount: number): boolean {
-    if (amount > 50000) return true;
-    
-    const recentTransactions = this.transactions.filter(
-      t => t.userId === userId && 
-      new Date(t.timestamp).getTime() > Date.now() - 3600000
-    );
-    
-    if (recentTransactions.length > 5) return true;
-
-    return false;
-  }
-
-  private createFraudAlert(userId: string, type: FraudAlert['type'], description: string): void {
-    const alert: FraudAlert = {
-      id: Math.random().toString(36).substr(2, 9),
-      userId,
-      type,
-      description,
+  private addFraudAlert = (type: FraudAlert['type'], description: string, severity: FraudAlert['severity']): void => {
+    const newAlert: FraudAlert = {
+      id: Math.random().toString(36).substring(2, 15),
+      userId: this.currentUser?.id || 'SYSTEM',
+      type: type,
+      description: description,
       timestamp: new Date().toISOString(),
-      severity: 'HIGH',
+      severity: severity,
       resolved: false
     };
-    this.fraudAlerts.push(alert);
-  }
+    fraudAlerts.push(newAlert);
+    localStorage.setItem('fraudAlerts', JSON.stringify(fraudAlerts));
+  };
 
-  private calculateInterestRate(creditScore: number, loanType: Loan['type']): number {
-    let baseRate = 15;
-    
-    if (creditScore >= 750) baseRate -= 3;
-    else if (creditScore >= 700) baseRate -= 2;
-    else if (creditScore >= 650) baseRate -= 1;
-    
-    switch (loanType) {
-      case 'PERSONAL': return baseRate;
-      case 'BUSINESS': return baseRate - 1;
-      case 'EMERGENCY': return baseRate + 2;
-      case 'EDUCATION': return baseRate - 2;
-      default: return baseRate;
+  private getUsers = (): User[] => {
+    return users;
+  };
+
+  private saveUsers = (): void => {
+    localStorage.setItem('users', JSON.stringify(users));
+  };
+
+  private getTransactions = (): Transaction[] => {
+    return transactions;
+  };
+
+  private saveTransactions = (): void => {
+    localStorage.setItem('transactions', JSON.stringify(transactions));
+  };
+
+  private getLoans = (): Loan[] => {
+    return loans;
+  };
+
+  private saveLoans = (): void => {
+    localStorage.setItem('loans', JSON.stringify(loans));
+  };
+
+  private calculateMonthlyPayment = (principal: number, rate: number, termMonths: number): number => {
+    const monthlyRate = rate / 100 / 12;
+    const payment = (principal * monthlyRate) / (1 - Math.pow(1 + monthlyRate, -termMonths));
+    return payment;
+  };
+
+  private calculateInterestRate = (type: Loan['type'], creditScore?: number): number => {
+    // Base rates
+    let baseRate = 0.10; // 10%
+
+    // Adjustments based on loan type
+    switch (type) {
+      case 'BUSINESS':
+        baseRate += 0.02; // Add 2% for business loans
+        break;
+      case 'EMERGENCY':
+        baseRate += 0.05; // Add 5% for emergency loans
+        break;
+      case 'EDUCATION':
+        baseRate += 0.01; // Add 1% for education loans
+        break;
+      default:
+        break;
     }
-  }
 
-  private calculateMonthlyPayment(principal: number, annualRate: number, months: number): number {
-    const monthlyRate = annualRate / 100 / 12;
-    const payment = principal * (monthlyRate * Math.pow(1 + monthlyRate, months)) / 
-                   (Math.pow(1 + monthlyRate, months) - 1);
-    return Math.round(payment);
-  }
+    // Adjustments based on credit score
+    if (creditScore) {
+      if (creditScore > 750) {
+        baseRate -= 0.02; // Reduce by 2% for excellent credit
+      } else if (creditScore > 650) {
+        baseRate -= 0.01; // Reduce by 1% for good credit
+      } else if (creditScore < 550) {
+        baseRate += 0.05; // Add 5% for poor credit
+      }
+    }
+
+    // Cap the rate between 5% and 20%
+    baseRate = Math.max(0.05, Math.min(0.20, baseRate));
+
+    return baseRate * 100; // Return as percentage
+  };
+
+  private startSession = (userId: string): void => {
+    const sessionId = Math.random().toString(36).substring(2, 15);
+    this.currentSession = {
+      sessionId: sessionId,
+      userId: userId,
+      startTime: new Date().toISOString(),
+      isActive: true,
+    };
+    localStorage.setItem('currentSession', JSON.stringify(this.currentSession));
+  };
+
+  private endSession = (sessionId: string): void => {
+    if (this.currentSession && this.currentSession.sessionId === sessionId) {
+      this.currentSession.endTime = new Date().toISOString();
+      this.currentSession.isActive = false;
+      localStorage.setItem('currentSession', JSON.stringify(this.currentSession));
+      this.currentSession = null;
+    }
+  };
 }
 
 export const atmService = new ATMService();

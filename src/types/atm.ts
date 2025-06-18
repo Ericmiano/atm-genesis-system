@@ -110,7 +110,7 @@ export interface FraudAlert {
 export interface AdminAction {
   id: string;
   adminId: string;
-  action: 'UNLOCK_ACCOUNT' | 'RESET_PIN' | 'APPROVE_LOAN' | 'REJECT_LOAN' | 'SUSPEND_USER' | 'ACTIVATE_USER' | 'ADJUST_BALANCE' | 'RESOLVE_FRAUD_ALERT';
+  action: 'UNLOCK_ACCOUNT' | 'RESET_PIN' | 'RESET_PASSWORD' | 'APPROVE_LOAN' | 'REJECT_LOAN' | 'SUSPEND_USER' | 'ACTIVATE_USER' | 'ADJUST_BALANCE' | 'RESOLVE_FRAUD_ALERT';
   targetUserId?: string;
   targetLoanId?: string;
   details: string;

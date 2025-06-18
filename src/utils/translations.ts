@@ -1,7 +1,8 @@
+
 import { Language } from '../types/atm';
 
 export interface Translations {
-  // ... keep existing code (all existing translations)
+  // Basic system
   atmSystem: string;
   secureLogin: string;
   accountNumber: string;
@@ -20,7 +21,8 @@ export interface Translations {
   billPayment: string;
   settings: string;
   logout: string;
-  // New translations
+  
+  // Authentication
   username: string;
   password: string;
   cardNumber: string;
@@ -44,11 +46,40 @@ export interface Translations {
   passwordSecurity: string;
   sessionSecurity: string;
   fraudProtection: string;
+  
+  // Common UI
+  back: string;
+  processing: string;
+  language: string;
+  
+  // Transaction specific
+  currentBalance: string;
+  quickAmounts: string;
+  customAmount: string;
+  enterAmount: string;
+  deposit: string;
+  withdraw: string;
+  transfer: string;
+  recipientAccount: string;
+  transferAmount: string;
+  
+  // PIN management
+  changePin: string;
+  currentPin: string;
+  newPin: string;
+  confirmPin: string;
+  
+  // Admin
+  adminPanel: string;
+  users: string;
+  transactions: string;
+  auditLogs: string;
+  fraudAlerts: string;
 }
 
 export const translations: Record<string, Translations> = {
   en: {
-    // ... keep existing code (all existing English translations)
+    // Basic system
     atmSystem: "ATM Banking System",
     secureLogin: "Secure Login Portal",
     accountNumber: "Account Number",
@@ -67,7 +98,8 @@ export const translations: Record<string, Translations> = {
     billPayment: "Bill Payment",
     settings: "Settings",
     logout: "Logout",
-    // New translations
+    
+    // Authentication
     username: "Username",
     password: "Password",
     cardNumber: "Card Number",
@@ -91,9 +123,38 @@ export const translations: Record<string, Translations> = {
     passwordSecurity: "Password Security",
     sessionSecurity: "Session Security",
     fraudProtection: "Fraud Protection",
+    
+    // Common UI
+    back: "Back",
+    processing: "Processing...",
+    language: "Language",
+    
+    // Transaction specific
+    currentBalance: "Current Balance",
+    quickAmounts: "Quick Amounts",
+    customAmount: "Custom Amount",
+    enterAmount: "Enter Amount",
+    deposit: "Deposit",
+    withdraw: "Withdraw",
+    transfer: "Transfer",
+    recipientAccount: "Recipient Account",
+    transferAmount: "Transfer Amount",
+    
+    // PIN management
+    changePin: "Change PIN",
+    currentPin: "Current PIN",
+    newPin: "New PIN",
+    confirmPin: "Confirm PIN",
+    
+    // Admin
+    adminPanel: "Admin Panel",
+    users: "Users",
+    transactions: "Transactions",
+    auditLogs: "Audit Logs",
+    fraudAlerts: "Fraud Alerts",
   },
   es: {
-    // ... keep existing code (all existing Spanish translations)
+    // Basic system
     atmSystem: "Sistema Bancario ATM",
     secureLogin: "Portal de Acceso Seguro",
     accountNumber: "Número de Cuenta",
@@ -112,7 +173,8 @@ export const translations: Record<string, Translations> = {
     billPayment: "Pago de Facturas",
     settings: "Configuración",
     logout: "Cerrar Sesión",
-    // New translations
+    
+    // Authentication
     username: "Nombre de Usuario",
     password: "Contraseña",
     cardNumber: "Número de Tarjeta",
@@ -136,9 +198,38 @@ export const translations: Record<string, Translations> = {
     passwordSecurity: "Seguridad de Contraseña",
     sessionSecurity: "Seguridad de Sesión",
     fraudProtection: "Protección contra Fraude",
+    
+    // Common UI
+    back: "Atrás",
+    processing: "Procesando...",
+    language: "Idioma",
+    
+    // Transaction specific
+    currentBalance: "Saldo Actual",
+    quickAmounts: "Montos Rápidos",
+    customAmount: "Monto Personalizado",
+    enterAmount: "Ingresar Monto",
+    deposit: "Depositar",
+    withdraw: "Retirar",
+    transfer: "Transferir",
+    recipientAccount: "Cuenta del Destinatario",
+    transferAmount: "Monto a Transferir",
+    
+    // PIN management
+    changePin: "Cambiar PIN",
+    currentPin: "PIN Actual",
+    newPin: "Nuevo PIN",
+    confirmPin: "Confirmar PIN",
+    
+    // Admin
+    adminPanel: "Panel de Administración",
+    users: "Usuarios",
+    transactions: "Transacciones",
+    auditLogs: "Registros de Auditoría",
+    fraudAlerts: "Alertas de Fraude",
   },
   fr: {
-    // ... keep existing code (all existing French translations)
+    // Basic system
     atmSystem: "Système Bancaire GAB",
     secureLogin: "Portail de Connexion Sécurisé",
     accountNumber: "Numéro de Compte",
@@ -157,7 +248,8 @@ export const translations: Record<string, Translations> = {
     billPayment: "Paiement de Factures",
     settings: "Paramètres",
     logout: "Déconnexion",
-    // New translations
+    
+    // Authentication
     username: "Nom d'Utilisateur",
     password: "Mot de Passe",
     cardNumber: "Numéro de Carte",
@@ -181,5 +273,34 @@ export const translations: Record<string, Translations> = {
     passwordSecurity: "Sécurité du Mot de Passe",
     sessionSecurity: "Sécurité de Session",
     fraudProtection: "Protection contre la Fraude",
+    
+    // Common UI
+    back: "Retour",
+    processing: "Traitement en cours...",
+    language: "Langue",
+    
+    // Transaction specific
+    currentBalance: "Solde Actuel",
+    quickAmounts: "Montants Rapides",
+    customAmount: "Montant Personnalisé",
+    enterAmount: "Entrer le Montant",
+    deposit: "Déposer",
+    withdraw: "Retirer",
+    transfer: "Transférer",
+    recipientAccount: "Compte du Destinataire",
+    transferAmount: "Montant à Transférer",
+    
+    // PIN management
+    changePin: "Changer le PIN",
+    currentPin: "PIN Actuel",
+    newPin: "Nouveau PIN",
+    confirmPin: "Confirmer le PIN",
+    
+    // Admin
+    adminPanel: "Panneau d'Administration",
+    users: "Utilisateurs",
+    transactions: "Transactions",
+    auditLogs: "Journaux d'Audit",
+    fraudAlerts: "Alertes de Fraude",
   }
 };
