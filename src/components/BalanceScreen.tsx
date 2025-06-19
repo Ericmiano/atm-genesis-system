@@ -3,9 +3,9 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { useATM } from '../contexts/ATMContext';
+import { useSupabaseATM } from '../contexts/SupabaseATMContext';
 import { translations } from '../utils/translations';
-import { atmService } from '../services/atmService';
+import { supabaseATMService } from '../services/supabaseATMService';
 import { ArrowLeft, Eye, Banknote, Calendar, User } from 'lucide-react';
 
 interface BalanceScreenProps {
@@ -17,14 +17,14 @@ const BalanceScreen: React.FC<BalanceScreenProps> = ({ onBack }) => {
   const [balance, setBalance] = useState<number | null>(null);
   const [message, setMessage] = useState('');
   const [success, setSuccess] = useState(false);
-  const { language, currentUser } = useATM();
+  const { language, currentUser } = useSupabaseATM();
   const t = translations[language];
 
   useEffect(() => {
     const fetchBalance = async () => {
       setLoading(true);
       try {
-        const result = await atmService.getBalance();
+        const result = await supabaseATMService.getBalance();
         if (result.success) {
           setBalance(result.balance!);
           setSuccess(true);

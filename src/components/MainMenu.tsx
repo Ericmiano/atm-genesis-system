@@ -2,7 +2,7 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { useATM } from '../contexts/ATMContext';
+import { useSupabaseATM } from '../contexts/SupabaseATMContext';
 import { translations } from '../utils/translations';
 import ATMCardDetails from './ATMCardDetails';
 import { 
@@ -22,7 +22,7 @@ interface MainMenuProps {
 }
 
 const MainMenu: React.FC<MainMenuProps> = ({ onNavigate }) => {
-  const { currentUser, logout, language } = useATM();
+  const { currentUser, logout, language } = useSupabaseATM();
   const t = translations[language];
 
   const menuItems = [

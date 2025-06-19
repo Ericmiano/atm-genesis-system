@@ -4,9 +4,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { atmService } from '../services/atmService';
+import { supabaseATMService } from '../services/supabaseATMService';
 import { translations } from '../utils/translations';
-import { useATM } from '../contexts/ATMContext';
+import { useSupabaseATM } from '../contexts/SupabaseATMContext';
 import { Shield, ArrowLeft } from 'lucide-react';
 
 interface PINVerificationProps {
@@ -25,7 +25,7 @@ const PINVerification: React.FC<PINVerificationProps> = ({
   const [pin, setPin] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { language } = useATM();
+  const { language } = useSupabaseATM();
   const t = translations[language];
 
   const handleVerify = async (e: React.FormEvent) => {
@@ -34,7 +34,7 @@ const PINVerification: React.FC<PINVerificationProps> = ({
     setError('');
 
     try {
-      const result = await atmService.verifyPin(pin);
+      const result = await supabaseATMService.verifyPin(pin);
       if (result.success) {
         onVerified();
       } else {

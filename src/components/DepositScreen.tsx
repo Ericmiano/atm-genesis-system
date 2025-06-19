@@ -5,9 +5,9 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { useATM } from '../contexts/ATMContext';
+import { useSupabaseATM } from '../contexts/SupabaseATMContext';
 import { translations } from '../utils/translations';
-import { atmService } from '../services/atmService';
+import { supabaseATMService } from '../services/supabaseATMService';
 import { ArrowLeft, PiggyBank, Banknote } from 'lucide-react';
 
 interface DepositScreenProps {
@@ -19,7 +19,7 @@ const DepositScreen: React.FC<DepositScreenProps> = ({ onBack }) => {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [success, setSuccess] = useState(false);
-  const { language, currentUser, setCurrentUser } = useATM();
+  const { language, currentUser, refreshUser } = useSupabaseATM();
   const t = translations[language];
 
   const quickAmounts = [500, 1000, 2000, 5000, 10000, 20000];
@@ -29,12 +29,12 @@ const DepositScreen: React.FC<DepositScreenProps> = ({ onBack }) => {
     setMessage('');
     
     try {
-      const result = await atmService.deposit(depositAmount);
+      const result = await supabaseATMService.deposit(depositAmount);
       setMessage(result.message);
       setSuccess(result.success);
       
-      if (result.success && currentUser) {
-        setCurrentUser({ ...currentUser, balance: result.balance! });
+      if (result.success) {
+        await refreshUser();
         setAmount('');
       }
     } catch (error) {

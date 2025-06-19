@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
-import { ATMProvider, useATM } from './contexts/ATMContext';
-import LoginScreen from './components/LoginScreen';
+import { SupabaseATMProvider, useSupabaseATM } from './contexts/SupabaseATMContext';
+import AuthScreen from './components/AuthScreen';
 import MainMenu from './components/MainMenu';
 import WithdrawalScreen from './components/WithdrawalScreen';
 import DepositScreen from './components/DepositScreen';
@@ -15,7 +15,7 @@ import AdminScreen from './components/AdminScreen';
 import { Toaster } from "@/components/ui/toaster";
 
 const ATMApp: React.FC = () => {
-  const { isAuthenticated } = useATM();
+  const { isAuthenticated, loading } = useSupabaseATM();
   const [currentScreen, setCurrentScreen] = useState('main');
 
   const handleNavigate = (screen: string) => {
@@ -26,8 +26,20 @@ const ATMApp: React.FC = () => {
     setCurrentScreen('main');
   };
 
+  const handleAuthSuccess = () => {
+    setCurrentScreen('main');
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-900 via-blue-800 to-blue-900 flex items-center justify-center">
+        <div className="text-white text-xl">Loading...</div>
+      </div>
+    );
+  }
+
   if (!isAuthenticated) {
-    return <LoginScreen />;
+    return <AuthScreen onAuthSuccess={handleAuthSuccess} />;
   }
 
   const renderScreen = () => {
@@ -66,9 +78,9 @@ const ATMApp: React.FC = () => {
 
 const App: React.FC = () => {
   return (
-    <ATMProvider>
+    <SupabaseATMProvider>
       <ATMApp />
-    </ATMProvider>
+    </SupabaseATMProvider>
   );
 };
 
