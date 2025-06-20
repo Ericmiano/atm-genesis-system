@@ -23,8 +23,10 @@ export const SupabaseATMProvider: React.FC<{ children: ReactNode }> = ({ childre
   const [loading, setLoading] = useState(true);
 
   const refreshUser = async () => {
+    console.log('Refreshing user data...');
     try {
       const user = await supabaseATMService.getCurrentUser();
+      console.log('User data retrieved:', user);
       setCurrentUser(user);
       setIsAuthenticated(!!user);
     } catch (error) {
@@ -35,38 +37,50 @@ export const SupabaseATMProvider: React.FC<{ children: ReactNode }> = ({ childre
   };
 
   const logout = async () => {
+    console.log('Logging out user...');
     await supabaseATMService.logout();
     setCurrentUser(null);
     setIsAuthenticated(false);
   };
 
   useEffect(() => {
+    console.log('Setting up auth state listener...');
+    
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         console.log('Auth state change:', event, session?.user?.email);
         
         if (session?.user) {
+          console.log('User session found, refreshing user data...');
           await refreshUser();
         } else {
+          console.log('No user session, clearing user data...');
           setCurrentUser(null);
           setIsAuthenticated(false);
         }
         
+        // Always set loading to false after handling auth state
+        console.log('Setting loading to false');
         setLoading(false);
       }
     );
 
     // Check for existing session
+    console.log('Checking for existing session...');
     supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log('Existing session check:', session?.user?.email || 'No session');
       if (session?.user) {
-        refreshUser();
+        refreshUser().finally(() => setLoading(false));
       } else {
         setLoading(false);
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      console.log('Cleaning up auth subscription');
+      subscription.unsubscribe();
+    };
   }, []);
 
   return (
