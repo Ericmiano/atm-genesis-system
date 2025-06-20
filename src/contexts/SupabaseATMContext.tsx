@@ -70,7 +70,20 @@ export const SupabaseATMProvider: React.FC<{ children: ReactNode }> = ({ childre
               cvv: '000',
               cardType: 'VISA',
               role: 'USER',
-              username: session.user.email?.split('@')[0] || 'user'
+              username: session.user.email?.split('@')[0] || 'user',
+              password: '',
+              isLocked: false,
+              lockReason: undefined,
+              lockDate: undefined,
+              failedAttempts: 0,
+              failedPasswordAttempts: 0,
+              lastPasswordAttempt: undefined,
+              createdAt: new Date().toISOString(),
+              lastLogin: undefined,
+              creditScore: undefined,
+              monthlyIncome: undefined,
+              passwordLastChanged: undefined,
+              mustChangePassword: false
             });
             setIsAuthenticated(true);
           }
@@ -106,7 +119,20 @@ export const SupabaseATMProvider: React.FC<{ children: ReactNode }> = ({ childre
             cvv: '000',
             cardType: 'VISA',
             role: 'USER',
-            username: session.user.email?.split('@')[0] || 'user'
+            username: session.user.email?.split('@')[0] || 'user',
+            password: '',
+            isLocked: false,
+            lockReason: undefined,
+            lockDate: undefined,
+            failedAttempts: 0,
+            failedPasswordAttempts: 0,
+            lastPasswordAttempt: undefined,
+            createdAt: new Date().toISOString(),
+            lastLogin: undefined,
+            creditScore: undefined,
+            monthlyIncome: undefined,
+            passwordLastChanged: undefined,
+            mustChangePassword: false
           });
           setIsAuthenticated(true);
         }).finally(() => setLoading(false));
