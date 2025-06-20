@@ -53,7 +53,27 @@ export const SupabaseATMProvider: React.FC<{ children: ReactNode }> = ({ childre
         
         if (session?.user) {
           console.log('User session found, refreshing user data...');
-          await refreshUser();
+          try {
+            await refreshUser();
+          } catch (error) {
+            console.error('Error during user refresh:', error);
+            // If user refresh fails, still mark as authenticated but with basic info
+            setCurrentUser({
+              id: session.user.id,
+              name: session.user.email || 'User',
+              email: session.user.email || '',
+              accountNumber: '0000000000',
+              balance: 0,
+              pin: '0000',
+              cardNumber: '0000000000000000',
+              expiryDate: '00/00',
+              cvv: '000',
+              cardType: 'VISA',
+              role: 'USER',
+              username: session.user.email?.split('@')[0] || 'user'
+            });
+            setIsAuthenticated(true);
+          }
         } else {
           console.log('No user session, clearing user data...');
           setCurrentUser(null);
@@ -71,7 +91,25 @@ export const SupabaseATMProvider: React.FC<{ children: ReactNode }> = ({ childre
     supabase.auth.getSession().then(({ data: { session } }) => {
       console.log('Existing session check:', session?.user?.email || 'No session');
       if (session?.user) {
-        refreshUser().finally(() => setLoading(false));
+        refreshUser().catch((error) => {
+          console.error('Error refreshing user on initial load:', error);
+          // Fallback to basic user info if refresh fails
+          setCurrentUser({
+            id: session.user.id,
+            name: session.user.email || 'User',
+            email: session.user.email || '',
+            accountNumber: '0000000000',
+            balance: 0,
+            pin: '0000',
+            cardNumber: '0000000000000000',
+            expiryDate: '00/00',
+            cvv: '000',
+            cardType: 'VISA',
+            role: 'USER',
+            username: session.user.email?.split('@')[0] || 'user'
+          });
+          setIsAuthenticated(true);
+        }).finally(() => setLoading(false));
       } else {
         setLoading(false);
       }

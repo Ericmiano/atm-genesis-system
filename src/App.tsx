@@ -16,10 +16,10 @@ import { Toaster } from "@/components/ui/toaster";
 
 const ATMApp: React.FC = () => {
   console.log('ATMApp component rendering...');
-  const { isAuthenticated, loading } = useSupabaseATM();
+  const { isAuthenticated, loading, currentUser } = useSupabaseATM();
   const [currentScreen, setCurrentScreen] = useState('main');
 
-  console.log('Auth state:', { isAuthenticated, loading });
+  console.log('Auth state:', { isAuthenticated, loading, hasUser: !!currentUser });
 
   const handleNavigate = (screen: string) => {
     console.log('Navigating to screen:', screen);
@@ -50,7 +50,16 @@ const ATMApp: React.FC = () => {
     return <AuthScreen onAuthSuccess={handleAuthSuccess} />;
   }
 
-  console.log('User authenticated, current screen:', currentScreen);
+  if (!currentUser) {
+    console.log('User authenticated but no user data, showing loading...');
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-900 via-blue-800 to-blue-900 flex items-center justify-center">
+        <div className="text-white text-xl">Setting up your account...</div>
+      </div>
+    );
+  }
+
+  console.log('User authenticated with data, current screen:', currentScreen);
 
   const renderScreen = () => {
     console.log('Rendering screen:', currentScreen);
