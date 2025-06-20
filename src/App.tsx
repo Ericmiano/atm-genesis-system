@@ -15,22 +15,29 @@ import AdminScreen from './components/AdminScreen';
 import { Toaster } from "@/components/ui/toaster";
 
 const ATMApp: React.FC = () => {
+  console.log('ATMApp component rendering...');
   const { isAuthenticated, loading } = useSupabaseATM();
   const [currentScreen, setCurrentScreen] = useState('main');
 
+  console.log('Auth state:', { isAuthenticated, loading });
+
   const handleNavigate = (screen: string) => {
+    console.log('Navigating to screen:', screen);
     setCurrentScreen(screen);
   };
 
   const handleBack = () => {
+    console.log('Going back to main menu');
     setCurrentScreen('main');
   };
 
   const handleAuthSuccess = () => {
+    console.log('Auth success, navigating to main');
     setCurrentScreen('main');
   };
 
   if (loading) {
+    console.log('App is in loading state');
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-900 via-blue-800 to-blue-900 flex items-center justify-center">
         <div className="text-white text-xl">Loading...</div>
@@ -39,10 +46,14 @@ const ATMApp: React.FC = () => {
   }
 
   if (!isAuthenticated) {
+    console.log('User not authenticated, showing auth screen');
     return <AuthScreen onAuthSuccess={handleAuthSuccess} />;
   }
 
+  console.log('User authenticated, current screen:', currentScreen);
+
   const renderScreen = () => {
+    console.log('Rendering screen:', currentScreen);
     switch (currentScreen) {
       case 'withdrawal':
         return <WithdrawalScreen onBack={handleBack} />;
@@ -68,20 +79,42 @@ const ATMApp: React.FC = () => {
     }
   };
 
-  return (
-    <div className="min-h-screen">
-      {renderScreen()}
-      <Toaster />
-    </div>
-  );
+  try {
+    const screenComponent = renderScreen();
+    console.log('Screen component created successfully');
+    return (
+      <div className="min-h-screen">
+        {screenComponent}
+        <Toaster />
+      </div>
+    );
+  } catch (error) {
+    console.error('Error rendering screen:', error);
+    return (
+      <div className="min-h-screen bg-red-50 flex items-center justify-center">
+        <div className="text-red-600 text-xl">Error loading application</div>
+      </div>
+    );
+  }
 };
 
 const App: React.FC = () => {
-  return (
-    <SupabaseATMProvider>
-      <ATMApp />
-    </SupabaseATMProvider>
-  );
+  console.log('Main App component rendering...');
+  
+  try {
+    return (
+      <SupabaseATMProvider>
+        <ATMApp />
+      </SupabaseATMProvider>
+    );
+  } catch (error) {
+    console.error('Error in main App component:', error);
+    return (
+      <div className="min-h-screen bg-red-50 flex items-center justify-center">
+        <div className="text-red-600 text-xl">Application failed to load</div>
+      </div>
+    );
+  }
 };
 
 export default App;
