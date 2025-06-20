@@ -29,14 +29,17 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
 
     try {
       if (isLogin) {
-        const { error } = await supabase.auth.signInWithPassword({
+        console.log('Attempting login with:', email);
+        const { data, error } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
         
         if (error) {
+          console.error('Login error:', error);
           setError(error.message);
-        } else {
+        } else if (data.user) {
+          console.log('Login successful:', data.user.email);
           onAuthSuccess();
         }
       } else {
@@ -59,6 +62,7 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
         }
       }
     } catch (err) {
+      console.error('Auth error:', err);
       setError('An unexpected error occurred');
     } finally {
       setLoading(false);
@@ -222,8 +226,8 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
               Demo Accounts (for testing)
             </div>
             <div className="text-xs space-y-1 text-gray-500">
-              <div>Email: john@example.com / Password: password123</div>
-              <div>Email: admin@example.com / Password: admin123</div>
+              <div>Regular User: john@example.com / password123</div>
+              <div>Admin User: admin@example.com / admin123</div>
             </div>
           </div>
         </CardContent>
