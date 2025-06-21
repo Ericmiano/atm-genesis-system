@@ -58,6 +58,10 @@ class ErrorBoundary extends React.Component<
 }
 
 const ATMApp: React.FC = () => {
+<<<<<<< HEAD
+=======
+  console.log('🖥️ ATMApp component rendering...');
+>>>>>>> 1a9386906cd0b99ea65a3cb17bc553dad145f0f0
   const { isAuthenticated, loading, currentUser } = useSupabaseATM();
   const [currentScreen, setCurrentScreen] = useState('main');
   const [appLoading, setAppLoading] = useState(true);
@@ -80,24 +84,45 @@ const ATMApp: React.FC = () => {
     return () => clearTimeout(timer);
   }, [loading]);
 
+  console.log('🔐 Auth state:', { 
+    isAuthenticated, 
+    loading, 
+    hasUser: !!currentUser,
+    userEmail: currentUser?.email,
+    currentScreen 
+  });
+
   const handleNavigate = (screen: string) => {
+<<<<<<< HEAD
     console.log('App: Navigating to screen:', screen);
+=======
+    console.log('🧭 Navigating to screen:', screen);
+>>>>>>> 1a9386906cd0b99ea65a3cb17bc553dad145f0f0
     setCurrentScreen(screen);
     setError(null); // Clear any previous errors
   };
 
   const handleBack = () => {
+<<<<<<< HEAD
     console.log('App: Navigating back to main screen');
+=======
+    console.log('⬅️ Going back to main menu');
+>>>>>>> 1a9386906cd0b99ea65a3cb17bc553dad145f0f0
     setCurrentScreen('main');
     setError(null); // Clear any previous errors
   };
 
   const handleAuthSuccess = () => {
+<<<<<<< HEAD
     console.log('App: Authentication successful, navigating to main screen');
+=======
+    console.log('✅ Auth success, navigating to main');
+>>>>>>> 1a9386906cd0b99ea65a3cb17bc553dad145f0f0
     setCurrentScreen('main');
     setError(null); // Clear any previous errors
   };
 
+<<<<<<< HEAD
   // Debug logging
   console.log('App: Current state:', {
     loading,
@@ -124,10 +149,19 @@ const ATMApp: React.FC = () => {
             Reload Application
           </button>
         </div>
+=======
+  // Show loading state
+  if (loading) {
+    console.log('⏳ App is in loading state');
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-900 via-blue-800 to-blue-900 flex items-center justify-center">
+        <div className="text-white text-xl animate-pulse">Loading ATM System...</div>
+>>>>>>> 1a9386906cd0b99ea65a3cb17bc553dad145f0f0
       </div>
     );
   }
 
+<<<<<<< HEAD
   // Show loading screen
   if (loading && appLoading) {
     return (
@@ -167,14 +201,35 @@ const ATMApp: React.FC = () => {
             Retry
           </button>
         </div>
+=======
+  // Show auth screen if not authenticated
+  if (!isAuthenticated) {
+    console.log('🔒 User not authenticated, showing auth screen');
+    return <AuthScreen onAuthSuccess={handleAuthSuccess} />;
+  }
+
+  // Show loading if authenticated but no user data yet
+  if (!currentUser) {
+    console.log('⚠️ User authenticated but no user data, showing setup screen');
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-900 via-blue-800 to-blue-900 flex items-center justify-center">
+        <div className="text-white text-xl animate-pulse">Setting up your account...</div>
+>>>>>>> 1a9386906cd0b99ea65a3cb17bc553dad145f0f0
       </div>
     );
   }
 
+<<<<<<< HEAD
   console.log('App: Rendering main application with user:', currentUser.email);
 
   const renderScreen = () => {
     console.log('App: Rendering screen:', currentScreen);
+=======
+  console.log('✅ User authenticated with data, current screen:', currentScreen);
+
+  const renderScreen = () => {
+    console.log('🎨 Rendering screen:', currentScreen);
+>>>>>>> 1a9386906cd0b99ea65a3cb17bc553dad145f0f0
     try {
       switch (currentScreen) {
         case 'withdrawal':
@@ -197,24 +252,56 @@ const ATMApp: React.FC = () => {
           return <AdminScreen onBack={handleBack} />;
         case 'main':
         default:
+<<<<<<< HEAD
           return <Dashboard onNavigate={handleNavigate} />;
       }
     } catch (screenError) {
       console.error('App: Error rendering screen:', screenError);
       setError('Failed to load screen. Please try again.');
       return null;
+=======
+          console.log('🏠 Rendering MainMenu for user:', currentUser.name);
+          return <MainMenu onNavigate={handleNavigate} />;
+      }
+    } catch (error) {
+      console.error('❌ Error rendering screen:', error);
+      // Fallback to main menu on error
+      setCurrentScreen('main');
+      return <MainMenu onNavigate={handleNavigate} />;
+>>>>>>> 1a9386906cd0b99ea65a3cb17bc553dad145f0f0
     }
   };
 
-  return (
-    <div className="min-h-screen">
-      {renderScreen()}
-      <Toaster />
-    </div>
-  );
+  try {
+    const screenComponent = renderScreen();
+    console.log('✅ Screen component created successfully');
+    return (
+      <div className="min-h-screen">
+        {screenComponent}
+        <Toaster />
+      </div>
+    );
+  } catch (error) {
+    console.error('❌ Critical error rendering screen:', error);
+    return (
+      <div className="min-h-screen bg-red-50 flex items-center justify-center p-4">
+        <div className="text-center">
+          <div className="text-red-600 text-xl mb-4">Application Error</div>
+          <div className="text-red-500 mb-4">Something went wrong. Please try refreshing the page.</div>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
+          >
+            Refresh Page
+          </button>
+        </div>
+      </div>
+    );
+  }
 };
 
 const App: React.FC = () => {
+<<<<<<< HEAD
   return (
     <SupabaseATMProvider>
       <ErrorBoundary>
@@ -222,6 +309,33 @@ const App: React.FC = () => {
       </ErrorBoundary>
     </SupabaseATMProvider>
   );
+=======
+  console.log('🚀 Main App component rendering...');
+  
+  try {
+    return (
+      <SupabaseATMProvider>
+        <ATMApp />
+      </SupabaseATMProvider>
+    );
+  } catch (error) {
+    console.error('❌ Critical error in main App component:', error);
+    return (
+      <div className="min-h-screen bg-red-50 flex items-center justify-center p-4">
+        <div className="text-center">
+          <div className="text-red-600 text-xl mb-4">Critical Application Error</div>
+          <div className="text-red-500 mb-4">The application failed to initialize. Please try refreshing the page.</div>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
+          >
+            Refresh Page
+          </button>
+        </div>
+      </div>
+    );
+  }
+>>>>>>> 1a9386906cd0b99ea65a3cb17bc553dad145f0f0
 };
 
 export default App;

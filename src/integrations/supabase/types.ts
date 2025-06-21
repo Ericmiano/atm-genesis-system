@@ -450,6 +450,19 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_user_account: {
+        Args: {
+          user_email: string
+          user_password: string
+          user_name: string
+          initial_balance?: number
+        }
+        Returns: string
+      }
+      delete_user_account: {
+        Args: { target_user_id: string }
+        Returns: boolean
+      }
       generate_unique_account_number: {
         Args: Record<PropertyKey, never>
         Returns: string

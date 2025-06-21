@@ -1,8 +1,20 @@
+<<<<<<< HEAD
 import { supabase } from '@/integrations/supabase/client';
 import { User, Transaction, Loan, Bill } from '../types/atm';
+=======
+
+import { User, Transaction, Bill } from '../types/atm';
+import { authService } from './authService';
+import { transactionService } from './transactionService';
+import { userService } from './userService';
+import { adminService } from './adminService';
+import { auditService } from './auditService';
+>>>>>>> 1a9386906cd0b99ea65a3cb17bc553dad145f0f0
 
 class SupabaseATMService {
+  // Authentication methods
   async getCurrentUser(): Promise<User | null> {
+<<<<<<< HEAD
     try {
       console.log('Service: Getting current user...');
       
@@ -254,7 +266,17 @@ class SupabaseATMService {
     } catch (error) {
       console.error('Service: Authentication error:', error);
       return { success: false, message: 'An unexpected error occurred' };
+=======
+    return authService.getCurrentUser();
+  }
+
+  async authenticate(email: string, password: string): Promise<{ success: boolean; message: string; user?: User }> {
+    const result = await authService.authenticate(email, password);
+    if (result.success) {
+      await auditService.logAuditTrail('LOGIN', 'User logged in successfully');
+>>>>>>> 1a9386906cd0b99ea65a3cb17bc553dad145f0f0
     }
+    return result;
   }
 
   private async updateFailedPasswordAttempts(userId: string): Promise<void> {
@@ -325,6 +347,7 @@ class SupabaseATMService {
   }
 
   async verifyPin(pin: string): Promise<{ success: boolean; message: string }> {
+<<<<<<< HEAD
     try {
       const user = await this.getCurrentUser();
       if (!user) {
@@ -647,10 +670,19 @@ class SupabaseATMService {
         });
     } catch (error) {
       console.error('Log audit trail error:', error);
+=======
+    const result = await authService.verifyPin(pin);
+    if (result.success) {
+      await auditService.logAuditTrail('PIN_VERIFICATION', 'PIN verified successfully');
+    } else {
+      await auditService.logAuditTrail('PIN_VERIFICATION_FAILED', 'Invalid PIN entered');
+>>>>>>> 1a9386906cd0b99ea65a3cb17bc553dad145f0f0
     }
+    return result;
   }
 
   async logout(): Promise<void> {
+<<<<<<< HEAD
     try {
       // Clear demo user from sessionStorage
       sessionStorage.removeItem('demoUser');
@@ -852,6 +884,61 @@ class SupabaseATMService {
     // Mock unlock logic
     console.log(`Unlocking account ${userId}`);
     return true;
+=======
+    await auditService.logAuditTrail('LOGOUT', 'User logged out');
+    await authService.logout();
+  }
+
+  // Transaction methods
+  async getBalance(): Promise<{ success: boolean; balance?: number; message: string }> {
+    return transactionService.getBalance();
+  }
+
+  async withdraw(amount: number): Promise<{ success: boolean; balance?: number; message: string }> {
+    return transactionService.withdraw(amount);
+  }
+
+  async deposit(amount: number): Promise<{ success: boolean; balance?: number; message: string }> {
+    return transactionService.deposit(amount);
+  }
+
+  async transfer(toAccount: string, amount: number): Promise<{ success: boolean; balance?: number; message: string }> {
+    return transactionService.transfer(toAccount, amount);
+  }
+
+  async getTransactionHistory(): Promise<Transaction[]> {
+    return transactionService.getTransactionHistory();
+  }
+
+  async getBills(): Promise<Bill[]> {
+    return transactionService.getBills();
+  }
+
+  async payBill(billId: string, amount: number): Promise<{ success: boolean; balance?: number; message: string }> {
+    return transactionService.payBill(billId, amount);
+  }
+
+  // User management methods
+  async getAllUsers(): Promise<User[]> {
+    return userService.getAllUsers();
+  }
+
+  // Admin methods
+  async createUser(email: string, password: string, name: string, initialBalance: number = 0): Promise<{ success: boolean; message: string; userId?: string }> {
+    const result = await adminService.createUser(email, password, name, initialBalance);
+    if (result.success) {
+      await auditService.logAuditTrail('CREATE_USER', `Created user account for ${email}`);
+    }
+    return result;
+  }
+
+  async deleteUser(userId: string): Promise<{ success: boolean; message: string }> {
+    const result = await adminService.deleteUser(userId);
+    if (result.success) {
+      await auditService.logAuditTrail('DELETE_USER', `Deleted user account ${userId}`);
+    }
+    return result;
+>>>>>>> 1a9386906cd0b99ea65a3cb17bc553dad145f0f0
   }
 }
 
