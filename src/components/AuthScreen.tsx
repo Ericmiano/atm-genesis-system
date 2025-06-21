@@ -29,21 +29,23 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
 
     try {
       if (isLogin) {
-        console.log('Attempting login with:', email);
+        console.log('🔐 Attempting login with:', email);
         const { data, error } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
         
         if (error) {
-          console.error('Login error:', error);
+          console.error('❌ Login error:', error);
           setError(error.message);
         } else if (data.user) {
-          console.log('Login successful:', data.user.email);
-          onAuthSuccess();
+          console.log('✅ Login successful:', data.user.email);
+          // Don't call onAuthSuccess immediately - let the auth state change handle it
+          console.log('✅ Auth state will handle navigation');
         }
       } else {
-        const { error } = await supabase.auth.signUp({
+        console.log('📝 Attempting signup with:', email);
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
@@ -56,13 +58,21 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
         });
         
         if (error) {
+          console.error('❌ Signup error:', error);
           setError(error.message);
-        } else {
-          setError('Please check your email for verification link');
+        } else if (data.user) {
+          console.log('✅ Signup successful:', data.user.email);
+          if (data.user.email_confirmed_at) {
+            // User is immediately confirmed
+            console.log('✅ User confirmed, auth state will handle navigation');
+          } else {
+            // User needs to confirm email
+            setError('Please check your email for verification link');
+          }
         }
       }
     } catch (err) {
-      console.error('Auth error:', err);
+      console.error('❌ Auth error:', err);
       setError('An unexpected error occurred');
     } finally {
       setLoading(false);
