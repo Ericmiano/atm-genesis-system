@@ -1,12 +1,11 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useATM } from '../contexts/ATMContext';
+import { useSupabaseATM } from '../contexts/SupabaseATMContext';
 import { translations } from '../utils/translations';
-import { atmService } from '../services/atmService';
+import { supabaseATMService } from '../services/supabaseATMService';
 import { User, Transaction, AuditLog, FraudAlert } from '../types/atm';
 import { ArrowLeft, Shield, Users, FileText, AlertTriangle, Activity, Eye, Lock, Unlock } from 'lucide-react';
 
@@ -20,17 +19,18 @@ const AdminScreen: React.FC<AdminScreenProps> = ({ onBack }) => {
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [fraudAlerts, setFraudAlerts] = useState<FraudAlert[]>([]);
   const [loading, setLoading] = useState(true);
-  const { language } = useATM();
+  const [activeTab, setActiveTab] = useState('overview');
+  const { language } = useSupabaseATM();
   const t = translations[language];
 
   useEffect(() => {
     const fetchAdminData = async () => {
       setLoading(true);
       try {
-        setUsers(atmService.getAllUsers());
-        setTransactions(atmService.getAllTransactions());
-        setAuditLogs(atmService.getAuditLogs());
-        setFraudAlerts(atmService.getFraudAlerts());
+        setUsers(supabaseATMService.getAllUsers());
+        setTransactions(supabaseATMService.getAllTransactions());
+        setAuditLogs(supabaseATMService.getAuditLogs());
+        setFraudAlerts(supabaseATMService.getFraudAlerts());
       } catch (error) {
         console.error('Error fetching admin data:', error);
       } finally {
@@ -42,9 +42,9 @@ const AdminScreen: React.FC<AdminScreenProps> = ({ onBack }) => {
   }, []);
 
   const handleUnlockAccount = (userId: string) => {
-    const success = atmService.unlockAccount(userId);
+    const success = supabaseATMService.unlockAccount(userId);
     if (success) {
-      setUsers(atmService.getAllUsers());
+      setUsers(supabaseATMService.getAllUsers());
     }
   };
 

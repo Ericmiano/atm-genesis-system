@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User, Language } from '../types/atm';
 import { supabaseATMService } from '../services/supabaseATMService';
@@ -16,7 +15,7 @@ interface SupabaseATMContextType {
 
 const SupabaseATMContext = createContext<SupabaseATMContextType | undefined>(undefined);
 
-export const SupabaseATMProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+export function SupabaseATMProvider({ children }: { children: ReactNode }) {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [language, setLanguage] = useState<Language>('en');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -24,49 +23,74 @@ export const SupabaseATMProvider: React.FC<{ children: ReactNode }> = ({ childre
 
   const refreshUser = async () => {
     try {
+      console.log('Context: Refreshing user data...');
       const user = await supabaseATMService.getCurrentUser();
+      console.log('Context: User data retrieved:', user ? 'Success' : 'No user found');
       setCurrentUser(user);
       setIsAuthenticated(!!user);
+      console.log('Context: State updated - isAuthenticated:', !!user);
     } catch (error) {
-      console.error('Error refreshing user:', error);
+      console.error('Context: Error refreshing user:', error);
       setCurrentUser(null);
       setIsAuthenticated(false);
     }
   };
 
   const logout = async () => {
-    await supabaseATMService.logout();
-    setCurrentUser(null);
-    setIsAuthenticated(false);
+    try {
+      await supabaseATMService.logout();
+      setCurrentUser(null);
+      setIsAuthenticated(false);
+    } catch (error) {
+      console.error('Context: Logout error:', error);
+    }
   };
 
   useEffect(() => {
-    // Set up auth state listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log('Auth state change:', event, session?.user?.email);
+    // Check for existing session first
+    const checkSession = async () => {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error('Context: Error getting session:', error);
+          setLoading(false);
+          return;
+        }
         
         if (session?.user) {
           await refreshUser();
-        } else {
-          setCurrentUser(null);
-          setIsAuthenticated(false);
         }
-        
+      } catch (error) {
+        console.error('Context: Error checking session:', error);
+      } finally {
         setLoading(false);
+      }
+    };
+
+    checkSession();
+
+    // Set up auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        console.log('Context: Auth state change:', event, session?.user?.email);
+        
+        try {
+          if (event === 'SIGNED_IN' && session?.user) {
+            await refreshUser();
+          } else if (event === 'SIGNED_OUT') {
+            setCurrentUser(null);
+            setIsAuthenticated(false);
+          }
+        } catch (error) {
+          console.error('Context: Error handling auth state change:', error);
+        }
       }
     );
 
-    // Check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        refreshUser();
-      } else {
-        setLoading(false);
-      }
-    });
-
-    return () => subscription.unsubscribe();
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   return (
@@ -82,12 +106,12 @@ export const SupabaseATMProvider: React.FC<{ children: ReactNode }> = ({ childre
       {children}
     </SupabaseATMContext.Provider>
   );
-};
+}
 
-export const useSupabaseATM = () => {
+export function useSupabaseATM() {
   const context = useContext(SupabaseATMContext);
   if (context === undefined) {
     throw new Error('useSupabaseATM must be used within a SupabaseATMProvider');
   }
   return context;
-};
+}

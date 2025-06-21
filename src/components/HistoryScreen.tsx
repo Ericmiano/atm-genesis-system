@@ -1,13 +1,12 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { useATM } from '../contexts/ATMContext';
+import { useSupabaseATM } from '../contexts/SupabaseATMContext';
 import { translations } from '../utils/translations';
-import { atmService } from '../services/atmService';
+import { supabaseATMService } from '../services/supabaseATMService';
 import { Transaction } from '../types/atm';
-import { ArrowLeft, FileText, Calendar, TrendingUp, TrendingDown, ArrowRightLeft, Eye } from 'lucide-react';
+import { ArrowLeft, FileText, Calendar, TrendingUp, TrendingDown, ArrowRightLeft, Eye, Filter, Download, Search } from 'lucide-react';
 
 interface HistoryScreenProps {
   onBack: () => void;
@@ -16,14 +15,16 @@ interface HistoryScreenProps {
 const HistoryScreen: React.FC<HistoryScreenProps> = ({ onBack }) => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
-  const { language } = useATM();
+  const [filter, setFilter] = useState('all');
+  const [searchTerm, setSearchTerm] = useState('');
+  const { language } = useSupabaseATM();
   const t = translations[language];
 
   useEffect(() => {
     const fetchHistory = async () => {
       setLoading(true);
       try {
-        const history = atmService.getTransactionHistory();
+        const history = supabaseATMService.getTransactionHistory();
         setTransactions(history);
       } catch (error) {
         console.error('Error fetching transaction history:', error);
@@ -80,9 +81,9 @@ const HistoryScreen: React.FC<HistoryScreenProps> = ({ onBack }) => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-900 via-orange-800 to-orange-900 p-4 animate-fade-in">
+    <div className="min-h-screen bg-gray-100 dark:bg-gray-900 transition-colors duration-300 p-4 animate-fade-in">
       <div className="max-w-4xl mx-auto">
-        <Card className="bg-white/95 backdrop-blur border-0 shadow-xl animate-scale-in">
+        <Card className="bg-white dark:bg-gray-800 border-0 shadow-xl animate-scale-in">
           <CardHeader>
             <div className="flex items-center gap-3">
               <Button
@@ -95,21 +96,21 @@ const HistoryScreen: React.FC<HistoryScreenProps> = ({ onBack }) => {
                 {t.back}
               </Button>
               <div className="flex items-center gap-2">
-                <FileText className="w-6 h-6 text-orange-600" />
-                <CardTitle className="text-xl">{t.transactionHistory}</CardTitle>
+                <FileText className="w-6 h-6 text-orange-600 dark:text-orange-400" />
+                <CardTitle className="text-xl dark:text-white">{t.transactionHistory}</CardTitle>
               </div>
             </div>
           </CardHeader>
           <CardContent>
             {loading ? (
               <div className="text-center py-8">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mx-auto"></div>
-                <p className="mt-4 text-gray-600">{t.processing}</p>
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 dark:border-orange-400 mx-auto"></div>
+                <p className="mt-4 text-gray-600 dark:text-gray-300">{t.processing}</p>
               </div>
             ) : transactions.length === 0 ? (
               <div className="text-center py-8">
-                <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-600 text-lg">No transactions found</p>
+                <FileText className="w-16 h-16 text-gray-400 dark:text-gray-600 mx-auto mb-4" />
+                <p className="text-gray-600 dark:text-gray-300 text-lg">No transactions found</p>
               </div>
             ) : (
               <div className="space-y-4">
@@ -118,7 +119,7 @@ const HistoryScreen: React.FC<HistoryScreenProps> = ({ onBack }) => {
                   return (
                     <Card 
                       key={transaction.id} 
-                      className="border border-gray-200 hover:shadow-md transition-all duration-200 hover:scale-[1.02] animate-fade-in"
+                      className="border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-all duration-200 hover:scale-[1.02] animate-fade-in bg-white dark:bg-gray-800"
                       style={{ animationDelay: `${index * 0.1}s` }}
                     >
                       <CardContent className="p-4">
@@ -126,18 +127,18 @@ const HistoryScreen: React.FC<HistoryScreenProps> = ({ onBack }) => {
                           <div className="flex items-center gap-3">
                             {getTransactionIcon(transaction.type)}
                             <div>
-                              <h3 className="font-semibold text-gray-800">
+                              <h3 className="font-semibold text-gray-800 dark:text-white">
                                 {transaction.type.replace('_', ' ')}
                               </h3>
-                              <p className="text-sm text-gray-600">{transaction.description}</p>
+                              <p className="text-sm text-gray-600 dark:text-gray-300">{transaction.description}</p>
                               <div className="flex items-center gap-2 mt-1">
-                                <Calendar className="w-3 h-3 text-gray-400" />
-                                <span className="text-xs text-gray-500">{date} at {time}</span>
+                                <Calendar className="w-3 h-3 text-gray-400 dark:text-gray-500" />
+                                <span className="text-xs text-gray-500 dark:text-gray-400">{date} at {time}</span>
                               </div>
                             </div>
                           </div>
                           <div className="text-right">
-                            <div className={`text-lg font-bold ${getTransactionColor(transaction.type)}`}>
+                            <div className={`text-lg font-bold ${getTransactionColor(transaction.type)} dark:text-inherit`}>
                               {formatAmount(transaction.amount, transaction.type)}
                             </div>
                             <Badge 

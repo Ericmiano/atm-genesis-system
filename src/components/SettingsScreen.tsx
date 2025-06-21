@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,11 +5,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useATM } from '../contexts/ATMContext';
+import { Switch } from '@/components/ui/switch';
+import { useSupabaseATM } from '../contexts/SupabaseATMContext';
 import { translations } from '../utils/translations';
 import { atmService } from '../services/atmService';
 import { Language } from '../types/atm';
-import { ArrowLeft, Settings, Lock, Globe, User } from 'lucide-react';
+import { ArrowLeft, Settings, Lock, Globe, User, Moon, Sun } from 'lucide-react';
 
 interface SettingsScreenProps {
   onBack: () => void;
@@ -23,7 +23,10 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onBack }) => {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [success, setSuccess] = useState(false);
-  const { language, setLanguage, currentUser } = useATM();
+  const [darkMode, setDarkMode] = useState(false);
+  const [notifications, setNotifications] = useState(true);
+  const [biometric, setBiometric] = useState(false);
+  const { language, setLanguage, currentUser } = useSupabaseATM();
   const t = translations[language];
 
   const handlePinChange = async (e: React.FormEvent) => {
@@ -76,9 +79,9 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onBack }) => {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-4 animate-fade-in">
+    <div className="min-h-screen bg-gray-100 dark:bg-gray-900 transition-colors duration-300 p-4 animate-fade-in">
       <div className="max-w-2xl mx-auto">
-        <Card className="bg-white/95 backdrop-blur border-0 shadow-xl animate-scale-in">
+        <Card className="bg-white dark:bg-gray-800 border-0 shadow-xl animate-scale-in">
           <CardHeader>
             <div className="flex items-center gap-3">
               <Button
@@ -91,15 +94,16 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onBack }) => {
                 {t.back}
               </Button>
               <div className="flex items-center gap-2">
-                <Settings className="w-6 h-6 text-gray-600" />
-                <CardTitle className="text-xl">{t.settings}</CardTitle>
+                <Settings className="w-6 h-6 text-gray-600 dark:text-gray-300" />
+                <CardTitle className="text-xl dark:text-white">{t.settings}</CardTitle>
               </div>
             </div>
           </CardHeader>
           <CardContent className="space-y-8">
             {/* User Information */}
-            <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+            <div className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600">
               <div className="flex items-center gap-3 mb-4">
+                <User className="w-6 h-6 text-gray-600 dark:text-gray-300" />
                 <User className="w-6 h-6 text-gray-600" />
                 <h3 className="text-lg font-semibold">Account Information</h3>
               </div>

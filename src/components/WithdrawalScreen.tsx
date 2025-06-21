@@ -1,13 +1,12 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { useATM } from '../contexts/ATMContext';
+import { useSupabaseATM } from '../contexts/SupabaseATMContext';
 import { translations } from '../utils/translations';
-import { atmService } from '../services/atmService';
+import { supabaseATMService } from '../services/supabaseATMService';
 import { ArrowLeft, DollarSign, Banknote } from 'lucide-react';
 
 interface WithdrawalScreenProps {
@@ -19,7 +18,7 @@ const WithdrawalScreen: React.FC<WithdrawalScreenProps> = ({ onBack }) => {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [success, setSuccess] = useState(false);
-  const { language, currentUser, setCurrentUser } = useATM();
+  const { language, currentUser, refreshUser } = useSupabaseATM();
   const t = translations[language];
 
   const quickAmounts = [500, 1000, 2000, 5000, 10000, 20000];
@@ -29,12 +28,12 @@ const WithdrawalScreen: React.FC<WithdrawalScreenProps> = ({ onBack }) => {
     setMessage('');
     
     try {
-      const result = await atmService.withdraw(withdrawAmount);
+      const result = await supabaseATMService.withdraw(withdrawAmount);
       setMessage(result.message);
       setSuccess(result.success);
       
-      if (result.success && currentUser) {
-        setCurrentUser({ ...currentUser, balance: result.balance! });
+      if (result.success) {
+        await refreshUser();
         setAmount('');
       }
     } catch (error) {
@@ -59,9 +58,9 @@ const WithdrawalScreen: React.FC<WithdrawalScreenProps> = ({ onBack }) => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-red-900 via-red-800 to-red-900 p-4 animate-fade-in">
+    <div className="min-h-screen bg-gray-100 dark:bg-gray-900 transition-colors duration-300 p-4 animate-fade-in">
       <div className="max-w-2xl mx-auto">
-        <Card className="bg-white/95 backdrop-blur border-0 shadow-xl animate-scale-in">
+        <Card className="bg-white dark:bg-gray-800 border-0 shadow-xl animate-scale-in">
           <CardHeader>
             <div className="flex items-center gap-3">
               <Button
@@ -75,20 +74,20 @@ const WithdrawalScreen: React.FC<WithdrawalScreenProps> = ({ onBack }) => {
               </Button>
               <div className="flex items-center gap-2">
                 <DollarSign className="w-6 h-6 text-red-600" />
-                <CardTitle className="text-xl">{t.cashWithdrawal}</CardTitle>
+                <CardTitle className="text-xl dark:text-white">{t.cashWithdrawal}</CardTitle>
               </div>
             </div>
           </CardHeader>
           <CardContent className="space-y-6">
-            <div className="p-4 bg-red-50 rounded-lg border border-red-200">
-              <div className="flex items-center gap-2 text-red-700">
+            <div className="p-4 bg-red-50 dark:bg-red-900 rounded-lg border border-red-200 dark:border-red-700">
+              <div className="flex items-center gap-2 text-red-700 dark:text-red-200">
                 <Banknote className="w-5 h-5" />
                 <span className="text-sm font-medium">Available Balance: KES {currentUser?.balance.toLocaleString()}</span>
               </div>
             </div>
 
             <div>
-              <h3 className="text-lg font-semibold mb-4">{t.quickAmounts}</h3>
+              <h3 className="text-lg font-semibold mb-4 dark:text-white">{t.quickAmounts}</h3>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                 {quickAmounts.map((quickAmount) => (
                   <Button
@@ -104,7 +103,7 @@ const WithdrawalScreen: React.FC<WithdrawalScreenProps> = ({ onBack }) => {
             </div>
 
             <div className="border-t pt-6">
-              <h3 className="text-lg font-semibold mb-4">{t.customAmount}</h3>
+              <h3 className="text-lg font-semibold mb-4 dark:text-white">{t.customAmount}</h3>
               <form onSubmit={handleCustomWithdrawal} className="space-y-4">
                 <div>
                   <Label htmlFor="amount">{t.enterAmount}</Label>
@@ -116,7 +115,7 @@ const WithdrawalScreen: React.FC<WithdrawalScreenProps> = ({ onBack }) => {
                     placeholder="0"
                     min="0"
                     step="1"
-                    className="text-lg transition-all duration-200 focus:scale-105"
+                    className="text-lg transition-all duration-200 focus:scale-105 dark:bg-gray-700 dark:text-white"
                   />
                 </div>
                 <Button
