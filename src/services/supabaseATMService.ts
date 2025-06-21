@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { User, Transaction, Loan, Bill } from '../types/atm';
 
@@ -357,6 +356,93 @@ class SupabaseATMService {
     } catch (error) {
       console.error('Bill payment error:', error);
       return { success: false, message: 'Bill payment failed' };
+    }
+  }
+
+  async createUser(email: string, password: string, name: string, initialBalance: number = 0): Promise<{ success: boolean; message: string; userId?: string }> {
+    try {
+      const { data, error } = await supabase.rpc('create_user_account', {
+        user_email: email,
+        user_password: password,
+        user_name: name,
+        initial_balance: initialBalance
+      });
+
+      if (error) {
+        console.error('Create user error:', error);
+        return { success: false, message: error.message };
+      }
+
+      await this.logAuditTrail('CREATE_USER', `Created user account for ${email}`);
+      return { success: true, message: 'User created successfully', userId: data };
+    } catch (error) {
+      console.error('Create user error:', error);
+      return { success: false, message: 'Failed to create user' };
+    }
+  }
+
+  async deleteUser(userId: string): Promise<{ success: boolean; message: string }> {
+    try {
+      const { data, error } = await supabase.rpc('delete_user_account', {
+        target_user_id: userId
+      });
+
+      if (error) {
+        console.error('Delete user error:', error);
+        return { success: false, message: error.message };
+      }
+
+      if (!data) {
+        return { success: false, message: 'Failed to delete user account' };
+      }
+
+      await this.logAuditTrail('DELETE_USER', `Deleted user account ${userId}`);
+      return { success: true, message: 'User deleted successfully' };
+    } catch (error) {
+      console.error('Delete user error:', error);
+      return { success: false, message: 'Failed to delete user' };
+    }
+  }
+
+  async getAllUsers(): Promise<User[]> {
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      return data.map(u => ({
+        id: u.id,
+        accountNumber: u.account_number,
+        username: u.username,
+        password: '', // Don't expose password
+        name: u.name,
+        email: u.email,
+        pin: u.pin,
+        balance: parseFloat(u.balance.toString()),
+        role: u.role as 'USER' | 'ADMIN',
+        isLocked: u.is_locked,
+        lockReason: u.lock_reason,
+        lockDate: u.lock_date,
+        failedAttempts: u.failed_attempts,
+        failedPasswordAttempts: u.failed_password_attempts,
+        lastPasswordAttempt: u.last_password_attempt,
+        createdAt: u.created_at,
+        lastLogin: u.last_login,
+        creditScore: u.credit_score,
+        monthlyIncome: u.monthly_income ? parseFloat(u.monthly_income.toString()) : undefined,
+        cardNumber: u.card_number,
+        expiryDate: u.expiry_date,
+        cvv: u.cvv,
+        cardType: u.card_type as 'VISA' | 'MASTERCARD',
+        passwordLastChanged: u.password_last_changed,
+        mustChangePassword: u.must_change_password
+      }));
+    } catch (error) {
+      console.error('Get all users error:', error);
+      return [];
     }
   }
 
