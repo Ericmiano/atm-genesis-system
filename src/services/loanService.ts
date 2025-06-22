@@ -105,13 +105,21 @@ export class LoanService {
         .eq('id', loanData.id);
 
       if (!approvalError) {
-        // Add loan amount to user's balance
-        await supabase
+        // Get current user balance first
+        const { data: currentUser, error: userError } = await supabase
           .from('users')
-          .update({ 
-            balance: supabase.sql`balance + ${amount}`
-          })
-          .eq('id', userId.user.id);
+          .select('balance')
+          .eq('id', userId.user.id)
+          .single();
+
+        if (!userError && currentUser) {
+          // Add loan amount to user's balance
+          const newBalance = parseFloat(currentUser.balance.toString()) + amount;
+          await supabase
+            .from('users')
+            .update({ balance: newBalance })
+            .eq('id', userId.user.id);
+        }
 
         // Create disbursement transaction
         await supabase
