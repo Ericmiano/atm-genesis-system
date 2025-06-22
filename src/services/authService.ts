@@ -47,7 +47,7 @@ export class AuthService {
 
   async authenticate(email: string, password: string): Promise<{ success: boolean; message: string; user?: User }> {
     try {
-      // First check if user exists and is not locked
+      // Check if user exists and is not locked
       const { data: userData } = await supabase
         .from('users')
         .select('id, is_locked, lock_reason, failed_password_attempts')
@@ -123,7 +123,7 @@ export class AuthService {
         return { success: false, message: 'User data not found' };
       }
 
-      // Perform MFA verification
+      // Perform MFA verification (Account Number + PIN)
       const mfaResult = await securityService.verifyMFA(user.id, userData.account_number, pin);
       
       if (mfaResult.success) {
@@ -162,6 +162,49 @@ export class AuthService {
     }
     
     await supabase.auth.signOut();
+  }
+
+  async changePin(currentPin: string, newPin: string): Promise<{ success: boolean; message: string }> {
+    try {
+      const user = await this.getCurrentUser();
+      if (!user) {
+        return { success: false, message: 'User not authenticated' };
+      }
+
+      // Verify current PIN first
+      const { data: userData } = await supabase
+        .from('users')
+        .select('pin')
+        .eq('id', user.id)
+        .single();
+
+      if (!userData || userData.pin !== currentPin) {
+        await securityService.handleFailedAttempt(user.id, 'PIN');
+        return { success: false, message: 'Current PIN is incorrect' };
+      }
+
+      // Encrypt new PIN (in production, use proper encryption)
+      const encryptedPin = await securityService.encryptSensitiveData(newPin);
+
+      // Update PIN
+      const { error } = await supabase
+        .from('users')
+        .update({ 
+          pin: newPin, // In production, store encrypted
+          password_last_changed: new Date().toISOString()
+        })
+        .eq('id', user.id);
+
+      if (error) throw error;
+
+      // Log security event
+      await securityService.logSecurityEvent(user.id, 'PIN_CHANGED', 'User changed PIN successfully');
+
+      return { success: true, message: 'PIN changed successfully' };
+    } catch (error) {
+      console.error('Change PIN error:', error);
+      return { success: false, message: 'Failed to change PIN' };
+    }
   }
 }
 

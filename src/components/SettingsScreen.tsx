@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,10 +8,12 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { useSupabaseATM } from '../contexts/SupabaseATMContext';
+import { useTheme } from '../contexts/ThemeContext';
+import { useSecurity } from '../contexts/SecurityContext';
 import { translations } from '../utils/translations';
-import { atmService } from '../services/atmService';
+import { authService } from '../services/authService';
 import { Language } from '../types/atm';
-import { ArrowLeft, Settings, Lock, Globe, User, Moon, Sun } from 'lucide-react';
+import { ArrowLeft, Settings, Lock, Globe, User, Moon, Sun, Shield, Activity } from 'lucide-react';
 
 interface SettingsScreenProps {
   onBack: () => void;
@@ -23,10 +26,9 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onBack }) => {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [success, setSuccess] = useState(false);
-  const [darkMode, setDarkMode] = useState(false);
-  const [notifications, setNotifications] = useState(true);
-  const [biometric, setBiometric] = useState(false);
   const { language, setLanguage, currentUser } = useSupabaseATM();
+  const { isDarkMode, toggleDarkMode } = useTheme();
+  const { isSessionValid } = useSecurity();
   const t = translations[language];
 
   const handlePinChange = async (e: React.FormEvent) => {
@@ -48,7 +50,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onBack }) => {
     setMessage('');
     
     try {
-      const result = await atmService.changePin(currentPin, newPin);
+      const result = await authService.changePin(currentPin, newPin);
       setMessage(result.message);
       setSuccess(result.success);
       
@@ -79,9 +81,9 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onBack }) => {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-100 dark:bg-gray-900 transition-colors duration-300 p-4 animate-fade-in">
-      <div className="max-w-2xl mx-auto">
-        <Card className="bg-white dark:bg-gray-800 border-0 shadow-xl animate-scale-in">
+    <div className="min-h-screen bg-gradient-to-br from-blue-900 via-blue-800 to-indigo-900 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 p-4 transition-all duration-300">
+      <div className="max-w-4xl mx-auto">
+        <Card className="bg-white/95 dark:bg-gray-800/95 backdrop-blur border-0 shadow-2xl animate-scale-in">
           <CardHeader>
             <div className="flex items-center gap-3">
               <Button
@@ -100,103 +102,162 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onBack }) => {
             </div>
           </CardHeader>
           <CardContent className="space-y-8">
+            {/* Security Status */}
+            <Card className={`${isSessionValid ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800' : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'}`}>
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <Shield className={`w-6 h-6 ${isSessionValid ? 'text-green-600' : 'text-red-600'}`} />
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-800 dark:text-white">Security Status</h3>
+                      <p className={`text-sm ${isSessionValid ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'}`}>
+                        {isSessionValid ? 'All security features active' : 'Security check required'}
+                      </p>
+                    </div>
+                  </div>
+                  <Activity className={`w-8 h-8 ${isSessionValid ? 'text-green-600 animate-pulse' : 'text-red-600'}`} />
+                </div>
+              </CardContent>
+            </Card>
+
             {/* User Information */}
-            <div className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600">
-              <div className="flex items-center gap-3 mb-4">
-                <User className="w-6 h-6 text-gray-600 dark:text-gray-300" />
-                <User className="w-6 h-6 text-gray-600" />
-                <h3 className="text-lg font-semibold">Account Information</h3>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm text-gray-600">Account Holder</p>
-                  <p className="font-semibold">{currentUser?.name}</p>
+            <Card className="bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600">
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <User className="w-6 h-6 text-gray-600 dark:text-gray-300" />
+                  <h3 className="text-lg font-semibold text-gray-800 dark:text-white">Account Information</h3>
                 </div>
-                <div>
-                  <p className="text-sm text-gray-600">Account Number</p>
-                  <p className="font-semibold">{currentUser?.accountNumber}</p>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Account Holder</p>
+                    <p className="font-semibold text-gray-800 dark:text-white">{currentUser?.name}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Account Number</p>
+                    <p className="font-semibold text-gray-800 dark:text-white">{currentUser?.accountNumber}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Email</p>
+                    <p className="font-semibold text-gray-800 dark:text-white">{currentUser?.email}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Role</p>
+                    <p className="font-semibold text-gray-800 dark:text-white">{currentUser?.role}</p>
+                  </div>
                 </div>
-              </div>
-            </div>
+              </CardContent>
+            </Card>
+
+            {/* Appearance Settings */}
+            <Card className="bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600">
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  {isDarkMode ? <Moon className="w-6 h-6 text-gray-600 dark:text-gray-300" /> : <Sun className="w-6 h-6 text-gray-600 dark:text-gray-300" />}
+                  <h3 className="text-lg font-semibold text-gray-800 dark:text-white">Appearance</h3>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label className="text-base text-gray-800 dark:text-white">Dark Mode</Label>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Switch between light and dark themes</p>
+                  </div>
+                  <Switch
+                    checked={isDarkMode}
+                    onCheckedChange={toggleDarkMode}
+                  />
+                </div>
+              </CardContent>
+            </Card>
 
             {/* Language Settings */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-3">
-                <Globe className="w-6 h-6 text-blue-600" />
-                <h3 className="text-lg font-semibold">{t.language}</h3>
-              </div>
-              <div className="space-y-2">
-                <Label>{t.language}</Label>
-                <Select value={language} onValueChange={handleLanguageChange}>
-                  <SelectTrigger className="transition-all duration-200 focus:scale-105">
-                    <SelectValue placeholder="Select language" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {languages.map((lang) => (
-                      <SelectItem key={lang.code} value={lang.code}>
-                        {lang.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
+            <Card className="bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600">
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <Globe className="w-6 h-6 text-blue-600" />
+                  <h3 className="text-lg font-semibold text-gray-800 dark:text-white">{t.language}</h3>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  <Label className="text-gray-800 dark:text-white">{t.language}</Label>
+                  <Select value={language} onValueChange={handleLanguageChange}>
+                    <SelectTrigger className="transition-all duration-200 focus:scale-105">
+                      <SelectValue placeholder="Select language" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {languages.map((lang) => (
+                        <SelectItem key={lang.code} value={lang.code}>
+                          {lang.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </CardContent>
+            </Card>
 
             {/* PIN Change */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-3">
-                <Lock className="w-6 h-6 text-red-600" />
-                <h3 className="text-lg font-semibold">{t.changePin}</h3>
-              </div>
-              <form onSubmit={handlePinChange} className="space-y-4">
-                <div>
-                  <Label htmlFor="currentPin">{t.currentPin}</Label>
-                  <Input
-                    id="currentPin"
-                    type="password"
-                    value={currentPin}
-                    onChange={(e) => setCurrentPin(e.target.value)}
-                    placeholder="••••"
-                    maxLength={4}
-                    className="text-lg text-center transition-all duration-200 focus:scale-105"
-                  />
+            <Card className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <Lock className="w-6 h-6 text-red-600" />
+                  <h3 className="text-lg font-semibold text-gray-800 dark:text-white">{t.changePin}</h3>
                 </div>
-                <div>
-                  <Label htmlFor="newPin">{t.newPin}</Label>
-                  <Input
-                    id="newPin"
-                    type="password"
-                    value={newPin}
-                    onChange={(e) => setNewPin(e.target.value)}
-                    placeholder="••••"
-                    maxLength={4}
-                    className="text-lg text-center transition-all duration-200 focus:scale-105"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="confirmPin">{t.confirmPin}</Label>
-                  <Input
-                    id="confirmPin"
-                    type="password"
-                    value={confirmPin}
-                    onChange={(e) => setConfirmPin(e.target.value)}
-                    placeholder="••••"
-                    maxLength={4}
-                    className="text-lg text-center transition-all duration-200 focus:scale-105"
-                  />
-                </div>
-                <Button
-                  type="submit"
-                  disabled={loading || !currentPin || !newPin || !confirmPin}
-                  className="w-full text-lg py-6 bg-red-600 hover:bg-red-700 transition-all duration-200 hover:scale-105 transform"
-                >
-                  {loading ? t.processing : t.changePin}
-                </Button>
-              </form>
-            </div>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handlePinChange} className="space-y-4">
+                  <div>
+                    <Label htmlFor="currentPin" className="text-gray-800 dark:text-white">{t.currentPin}</Label>
+                    <Input
+                      id="currentPin"
+                      type="password"
+                      value={currentPin}
+                      onChange={(e) => setCurrentPin(e.target.value)}
+                      placeholder="••••"
+                      maxLength={4}
+                      className="text-lg text-center transition-all duration-200 focus:scale-105 mt-2"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="newPin" className="text-gray-800 dark:text-white">{t.newPin}</Label>
+                    <Input
+                      id="newPin"
+                      type="password"
+                      value={newPin}
+                      onChange={(e) => setNewPin(e.target.value)}
+                      placeholder="••••"
+                      maxLength={4}
+                      className="text-lg text-center transition-all duration-200 focus:scale-105 mt-2"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="confirmPin" className="text-gray-800 dark:text-white">{t.confirmPin}</Label>
+                    <Input
+                      id="confirmPin"
+                      type="password"
+                      value={confirmPin}
+                      onChange={(e) => setConfirmPin(e.target.value)}
+                      placeholder="••••"
+                      maxLength={4}
+                      className="text-lg text-center transition-all duration-200 focus:scale-105 mt-2"
+                    />
+                  </div>
+                  <Button
+                    type="submit"
+                    disabled={loading || !currentPin || !newPin || !confirmPin}
+                    className="w-full text-lg py-6 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 transition-all duration-200 hover:scale-105"
+                  >
+                    {loading ? t.processing : t.changePin}
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
 
             {message && (
-              <Alert variant={success ? "default" : "destructive"} className="animate-slide-in-right">
+              <Alert variant={success ? "default" : "destructive"} className="animate-fade-in">
                 <AlertDescription>{message}</AlertDescription>
               </Alert>
             )}

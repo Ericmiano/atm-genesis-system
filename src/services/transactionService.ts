@@ -2,6 +2,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { Transaction, Bill } from '../types/atm';
 import { authService } from './authService';
+import { securityService } from './securityService';
 
 export class TransactionService {
   async getBalance(): Promise<{ success: boolean; balance?: number; message: string }> {
@@ -28,6 +29,13 @@ export class TransactionService {
 
       if (amount <= 0) {
         return { success: false, message: 'Invalid amount' };
+      }
+
+      // Fraud detection
+      const fraudCheck = await securityService.detectFraudulentActivity(user.id, 'WITHDRAWAL', amount);
+      if (fraudCheck.isSuspicious) {
+        await this.logTransaction('WITHDRAWAL', amount, `Suspicious withdrawal blocked: ${fraudCheck.reason}`, 'FAILED');
+        return { success: false, message: `Transaction blocked: ${fraudCheck.reason}` };
       }
 
       if (user.balance < amount) {
@@ -66,6 +74,13 @@ export class TransactionService {
         return { success: false, message: 'Invalid amount' };
       }
 
+      // Fraud detection for large deposits
+      const fraudCheck = await securityService.detectFraudulentActivity(user.id, 'DEPOSIT', amount);
+      if (fraudCheck.isSuspicious) {
+        await this.logTransaction('DEPOSIT', amount, `Suspicious deposit flagged: ${fraudCheck.reason}`, 'PENDING');
+        // Don't block deposits, but flag for review
+      }
+
       const newBalance = user.balance + amount;
 
       // Update user balance
@@ -95,6 +110,13 @@ export class TransactionService {
 
       if (amount <= 0) {
         return { success: false, message: 'Invalid amount' };
+      }
+
+      // Fraud detection
+      const fraudCheck = await securityService.detectFraudulentActivity(user.id, 'TRANSFER', amount);
+      if (fraudCheck.isSuspicious) {
+        await this.logTransaction('TRANSFER', amount, `Suspicious transfer blocked: ${fraudCheck.reason}`, 'FAILED');
+        return { success: false, message: `Transaction blocked: ${fraudCheck.reason}` };
       }
 
       if (user.balance < amount) {
