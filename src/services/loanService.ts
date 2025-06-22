@@ -49,7 +49,8 @@ export class LoanService {
         return { success: false, message: 'User not authenticated' };
       }
 
-      const { data, error } = await supabase.rpc('process_loan_application', {
+      // Call the database function directly using supabase.rpc
+      const { data: loanId, error } = await supabase.rpc('process_loan_application', {
         p_user_id: userId.user.id,
         p_type: type,
         p_principal: amount,
@@ -63,13 +64,13 @@ export class LoanService {
         return { success: false, message: 'Failed to process loan application' };
       }
 
-      // Auto-approve loans for demo purposes (in production, this would be manual)
-      const approvalResult = await supabase.rpc('approve_loan', {
-        p_loan_id: data
+      // Auto-approve loans for demo purposes
+      const { error: approvalError } = await supabase.rpc('approve_loan', {
+        p_loan_id: loanId
       });
 
-      if (approvalResult.error) {
-        console.error('Loan approval error:', approvalResult.error);
+      if (approvalError) {
+        console.error('Loan approval error:', approvalError);
         return { success: true, message: 'Loan application submitted successfully and is pending approval' };
       }
 

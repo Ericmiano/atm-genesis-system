@@ -61,6 +61,10 @@ class SupabaseATMService {
     return transactionService.getBills();
   }
 
+  async getAvailableBills(): Promise<Bill[]> {
+    return transactionService.getBills();
+  }
+
   async payBill(billId: string, amount: number): Promise<{ success: boolean; balance?: number; message: string }> {
     return transactionService.payBill(billId, amount);
   }
