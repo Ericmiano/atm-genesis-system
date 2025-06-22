@@ -46,7 +46,7 @@ const LoansScreen: React.FC<LoansScreenProps> = ({ onBack }) => {
   const fetchLoans = async () => {
     setLoading(true);
     try {
-      const userLoans = supabaseATMService.getUserLoans();
+      const userLoans = await supabaseATMService.getUserLoans();
       setLoans(userLoans);
     } catch (error) {
       console.error('Error fetching loans:', error);
