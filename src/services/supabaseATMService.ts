@@ -5,6 +5,7 @@ import { transactionService } from './transactionService';
 import { userService } from './userService';
 import { adminService } from './adminService';
 import { auditService } from './auditService';
+import { loanService } from './loanService';
 
 class SupabaseATMService {
   // Authentication methods
@@ -60,25 +61,13 @@ class SupabaseATMService {
     return transactionService.getBills();
   }
 
-  // Add missing method for getting available bills
-  async getAvailableBills(): Promise<Bill[]> {
-    return this.getBills();
-  }
-
   async payBill(billId: string, amount: number): Promise<{ success: boolean; balance?: number; message: string }> {
     return transactionService.payBill(billId, amount);
   }
 
-  // User management methods
-  async getAllUsers(): Promise<User[]> {
-    return userService.getAllUsers();
-  }
-
-  // Loan methods - Add missing loan methods
+  // Loan methods
   async getUserLoans(): Promise<Loan[]> {
-    // For now, return empty array - would need to implement loan service
-    // This should be replaced with actual loan service implementation
-    return [];
+    return loanService.getUserLoans();
   }
 
   async applyForLoan(
@@ -88,19 +77,16 @@ class SupabaseATMService {
     purpose: string,
     collateral?: string
   ): Promise<{ success: boolean; message: string; loan?: Loan }> {
-    // Mock implementation - would need actual loan service
-    return {
-      success: false,
-      message: 'Loan service not yet implemented'
-    };
+    return loanService.applyForLoan(type, amount, termMonths, purpose, collateral);
   }
 
   async makePayment(loanId: string, amount: number): Promise<{ success: boolean; message: string; balance?: number }> {
-    // Mock implementation - would need actual loan service
-    return {
-      success: false,
-      message: 'Loan payment service not yet implemented'
-    };
+    return loanService.makePayment(loanId, amount);
+  }
+
+  // User management methods
+  async getAllUsers(): Promise<User[]> {
+    return userService.getAllUsers();
   }
 
   // Admin methods
