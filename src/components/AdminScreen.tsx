@@ -1,16 +1,8 @@
+
 import React, { useState, useEffect } from 'react';
-<<<<<<< HEAD
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useSupabaseATM } from '../contexts/SupabaseATMContext';
-import { translations } from '../utils/translations';
-=======
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { useSupabaseATM } from '../contexts/SupabaseATMContext';
->>>>>>> 1a9386906cd0b99ea65a3cb17bc553dad145f0f0
 import { supabaseATMService } from '../services/supabaseATMService';
 import { User, Transaction, AuditLog, FraudAlert } from '../types/atm';
 import UserManagement from './UserManagement';
@@ -30,35 +22,6 @@ const AdminScreen: React.FC<AdminScreenProps> = ({ onBack }) => {
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [fraudAlerts, setFraudAlerts] = useState<FraudAlert[]>([]);
   const [loading, setLoading] = useState(true);
-<<<<<<< HEAD
-  const [activeTab, setActiveTab] = useState('overview');
-  const { language } = useSupabaseATM();
-  const t = translations[language];
-
-  useEffect(() => {
-    const fetchAdminData = async () => {
-      setLoading(true);
-      try {
-        setUsers(supabaseATMService.getAllUsers());
-        setTransactions(supabaseATMService.getAllTransactions());
-        setAuditLogs(supabaseATMService.getAuditLogs());
-        setFraudAlerts(supabaseATMService.getFraudAlerts());
-      } catch (error) {
-        console.error('Error fetching admin data:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchAdminData();
-  }, []);
-
-  const handleUnlockAccount = (userId: string) => {
-    const success = supabaseATMService.unlockAccount(userId);
-    if (success) {
-      setUsers(supabaseATMService.getAllUsers());
-    }
-=======
   const { language } = useSupabaseATM();
 
   const fetchAdminData = async () => {
@@ -87,7 +50,6 @@ const AdminScreen: React.FC<AdminScreenProps> = ({ onBack }) => {
 
   const handleUserCreated = () => {
     fetchAdminData();
->>>>>>> 1a9386906cd0b99ea65a3cb17bc553dad145f0f0
   };
 
   const handleUserDeleted = () => {

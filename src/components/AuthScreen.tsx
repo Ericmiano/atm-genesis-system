@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -61,24 +62,6 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
 
     try {
       if (isLogin) {
-<<<<<<< HEAD
-        console.log('Attempting login with:', email);
-        const result = await supabaseATMService.authenticate(email, password);
-        console.log('Login result:', result);
-        
-        if (result.success) {
-          setSuccessMessage('Login successful! Redirecting...');
-          // Refresh user data in context
-          await refreshUser();
-          setTimeout(() => {
-            onAuthSuccess();
-          }, 1000);
-        } else {
-          setError(result.message);
-        }
-      } else {
-        // For signup, we'll use Supabase auth directly since we need to handle email verification
-=======
         console.log('🔐 Attempting login with:', email);
         const { data, error } = await supabase.auth.signInWithPassword({
           email,
@@ -95,7 +78,6 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
         }
       } else {
         console.log('📝 Attempting signup with:', email);
->>>>>>> 1a9386906cd0b99ea65a3cb17bc553dad145f0f0
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
@@ -111,15 +93,6 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
         if (error) {
           console.error('❌ Signup error:', error);
           setError(error.message);
-<<<<<<< HEAD
-        } else {
-          setSuccessMessage('Account created! Please check your email for verification link.');
-        }
-      }
-    } catch (err) {
-      console.error('Auth error:', err);
-      setError('An unexpected error occurred. Please try again.');
-=======
         } else if (data.user) {
           console.log('✅ Signup successful:', data.user.email);
           if (data.user.email_confirmed_at) {
@@ -134,7 +107,6 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
     } catch (err) {
       console.error('❌ Auth error:', err);
       setError('An unexpected error occurred');
->>>>>>> 1a9386906cd0b99ea65a3cb17bc553dad145f0f0
     } finally {
       setLoading(false);
     }
@@ -330,15 +302,9 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
               <Shield className="w-4 h-4" />
               Demo Accounts (for testing)
             </div>
-<<<<<<< HEAD
-            <div className="text-xs space-y-1 text-gray-500 dark:text-gray-400">
-              <div>Email: john@example.com / Password: password123</div>
-              <div>Email: admin@example.com / Password: admin123</div>
-=======
             <div className="text-xs space-y-1 text-gray-500">
               <div>Regular User: john@example.com / password123</div>
               <div>Admin User: admin@example.com / admin123</div>
->>>>>>> 1a9386906cd0b99ea65a3cb17bc553dad145f0f0
             </div>
           </div>
         </CardContent>
