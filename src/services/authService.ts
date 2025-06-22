@@ -1,6 +1,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { User } from '../types/atm';
+import { securityService } from './securityService';
 
 export class AuthService {
   async getCurrentUser(): Promise<User | null> {
@@ -35,7 +36,7 @@ export class AuthService {
       lastLogin: data.last_login,
       creditScore: data.credit_score,
       monthlyIncome: data.monthly_income ? parseFloat(data.monthly_income.toString()) : undefined,
-      cardNumber: data.card_number,
+      cardNumber: securityService.maskCardNumber(data.card_number),
       expiryDate: data.expiry_date,
       cvv: data.cvv,
       cardType: data.card_type as 'VISA' | 'MASTERCARD',
@@ -46,39 +47,36 @@ export class AuthService {
 
   async authenticate(email: string, password: string): Promise<{ success: boolean; message: string; user?: User }> {
     try {
+      // First check if user exists and is not locked
+      const { data: userData } = await supabase
+        .from('users')
+        .select('id, is_locked, lock_reason, failed_password_attempts')
+        .eq('email', email)
+        .single();
+
+      if (userData?.is_locked) {
+        await securityService.handleFailedAttempt(userData.id, 'LOGIN');
+        return { success: false, message: userData.lock_reason || 'Account is locked' };
+      }
+
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password
       });
 
       if (error) {
-        // Check if account is locked
-        const { data: userData } = await supabase
-          .from('users')
-          .select('is_locked, lock_reason, failed_password_attempts')
-          .eq('email', email)
-          .single();
-
-        if (userData?.is_locked) {
-          return { success: false, message: userData.lock_reason || 'Account is locked' };
-        }
-
-        // Increment failed attempts
         if (userData) {
-          await supabase
-            .from('users')
-            .update({ 
-              failed_password_attempts: userData.failed_password_attempts + 1,
-              last_password_attempt: new Date().toISOString()
-            })
-            .eq('email', email);
+          const { shouldLock, attemptsLeft } = await securityService.handleFailedAttempt(userData.id, 'LOGIN');
+          if (shouldLock) {
+            return { success: false, message: 'Account locked due to multiple failed attempts' };
+          }
+          return { success: false, message: `Invalid credentials. ${attemptsLeft} attempts remaining.` };
         }
-
         return { success: false, message: 'Invalid credentials' };
       }
 
       if (data.user) {
-        // Update last login and reset failed attempts
+        // Reset failed attempts on successful login
         await supabase
           .from('users')
           .update({ 
@@ -86,6 +84,9 @@ export class AuthService {
             failed_password_attempts: 0
           })
           .eq('id', data.user.id);
+
+        // Create secure session
+        await securityService.createSecureSession(data.user.id);
 
         const user = await this.getCurrentUser();
         if (user) {
@@ -107,24 +108,59 @@ export class AuthService {
         return { success: false, message: 'User not authenticated' };
       }
 
-      if (user.pin === pin) {
-        return { success: true, message: 'PIN verified' };
-      } else {
-        // Increment failed PIN attempts
+      if (user.isLocked) {
+        return { success: false, message: user.lockReason || 'Account is locked' };
+      }
+
+      // Get actual PIN from database (not masked)
+      const { data: userData } = await supabase
+        .from('users')
+        .select('pin, account_number')
+        .eq('id', user.id)
+        .single();
+
+      if (!userData) {
+        return { success: false, message: 'User data not found' };
+      }
+
+      // Perform MFA verification
+      const mfaResult = await securityService.verifyMFA(user.id, userData.account_number, pin);
+      
+      if (mfaResult.success) {
+        // Reset failed PIN attempts
         await supabase
           .from('users')
-          .update({ failed_attempts: user.failedAttempts + 1 })
+          .update({ failed_attempts: 0 })
           .eq('id', user.id);
 
-        return { success: false, message: 'Invalid PIN' };
+        return { success: true, message: 'PIN verified successfully' };
+      } else {
+        const { shouldLock, attemptsLeft } = await securityService.handleFailedAttempt(user.id, 'PIN');
+        if (shouldLock) {
+          return { success: false, message: 'Account locked due to multiple failed PIN attempts' };
+        }
+        return { success: false, message: `Invalid PIN. ${attemptsLeft} attempts remaining.` };
       }
     } catch (error) {
       console.error('PIN verification error:', error);
-      return { success: false, message: 'Verification failed' };
+      return { success: false, message: 'PIN verification failed' };
     }
   }
 
   async logout(): Promise<void> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      // Terminate all active sessions for the user
+      await supabase
+        .from('atm_sessions')
+        .update({
+          is_active: false,
+          end_time: new Date().toISOString()
+        })
+        .eq('user_id', user.id)
+        .eq('is_active', true);
+    }
+    
     await supabase.auth.signOut();
   }
 }
