@@ -1,5 +1,5 @@
 
-import { User, Transaction, Bill } from '../types/atm';
+import { User, Transaction, Bill, Loan } from '../types/atm';
 import { authService } from './authService';
 import { transactionService } from './transactionService';
 import { userService } from './userService';
@@ -60,6 +60,11 @@ class SupabaseATMService {
     return transactionService.getBills();
   }
 
+  // Add missing method for getting available bills
+  async getAvailableBills(): Promise<Bill[]> {
+    return this.getBills();
+  }
+
   async payBill(billId: string, amount: number): Promise<{ success: boolean; balance?: number; message: string }> {
     return transactionService.payBill(billId, amount);
   }
@@ -67,6 +72,35 @@ class SupabaseATMService {
   // User management methods
   async getAllUsers(): Promise<User[]> {
     return userService.getAllUsers();
+  }
+
+  // Loan methods - Add missing loan methods
+  async getUserLoans(): Promise<Loan[]> {
+    // For now, return empty array - would need to implement loan service
+    // This should be replaced with actual loan service implementation
+    return [];
+  }
+
+  async applyForLoan(
+    type: Loan['type'],
+    amount: number,
+    termMonths: number,
+    purpose: string,
+    collateral?: string
+  ): Promise<{ success: boolean; message: string; loan?: Loan }> {
+    // Mock implementation - would need actual loan service
+    return {
+      success: false,
+      message: 'Loan service not yet implemented'
+    };
+  }
+
+  async makePayment(loanId: string, amount: number): Promise<{ success: boolean; message: string; balance?: number }> {
+    // Mock implementation - would need actual loan service
+    return {
+      success: false,
+      message: 'Loan payment service not yet implemented'
+    };
   }
 
   // Admin methods

@@ -26,8 +26,16 @@ const BillPaymentScreen: React.FC<BillPaymentScreenProps> = ({ onBack }) => {
   const t = translations[language];
 
   useEffect(() => {
-    const availableBills = supabaseATMService.getAvailableBills();
-    setBills(availableBills);
+    const fetchBills = async () => {
+      try {
+        const availableBills = await supabaseATMService.getAvailableBills();
+        setBills(availableBills);
+      } catch (error) {
+        console.error('Error fetching bills:', error);
+      }
+    };
+
+    fetchBills();
   }, []);
 
   const handlePayBill = async (bill: Bill, amount?: number) => {

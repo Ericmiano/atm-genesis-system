@@ -24,7 +24,7 @@ const HistoryScreen: React.FC<HistoryScreenProps> = ({ onBack }) => {
     const fetchHistory = async () => {
       setLoading(true);
       try {
-        const history = supabaseATMService.getTransactionHistory();
+        const history = await supabaseATMService.getTransactionHistory();
         setTransactions(history);
       } catch (error) {
         console.error('Error fetching transaction history:', error);
