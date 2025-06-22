@@ -1,5 +1,5 @@
-
 import type { Config } from "tailwindcss";
+const { fontFamily } = require("tailwindcss/defaultTheme");
 
 export default {
 	darkMode: ["class"],
@@ -53,6 +53,13 @@ export default {
 					DEFAULT: 'hsl(var(--card))',
 					foreground: 'hsl(var(--card-foreground))'
 				},
+				silver: {
+					DEFAULT: '#f0f0f0',
+					light: '#ffffff',
+					dark: '#c0c0c0',
+				},
+				'sleek-black': '#000000',
+				'sleek-silver': '#f0f0f0',
 				sidebar: {
 					DEFAULT: 'hsl(var(--sidebar-background))',
 					foreground: 'hsl(var(--sidebar-foreground))',
@@ -115,6 +122,14 @@ export default {
 						transform: 'translateX(0)',
 						opacity: '1'
 					}
+				},
+				'glow': {
+					'0%': {
+						boxShadow: '0 0 10px rgba(255, 255, 255, 0.1)'
+					},
+					'100%': {
+						boxShadow: '0 0 20px rgba(255, 255, 255, 0.2), 0 0 30px rgba(255, 255, 255, 0.1)'
+					}
 				}
 			},
 			animation: {
@@ -122,8 +137,13 @@ export default {
 				'accordion-up': 'accordion-up 0.2s ease-out',
 				'fade-in': 'fade-in 0.3s ease-out',
 				'scale-in': 'scale-in 0.2s ease-out',
-				'slide-in-right': 'slide-in-right 0.3s ease-out'
-			}
+				'slide-in-right': 'slide-in-right 0.3s ease-out',
+				'glow': 'glow 2s ease-in-out infinite alternate',
+				'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite'
+			},
+			fontFamily: {
+				sans: ["var(--font-sans)", ...fontFamily.sans],
+			},
 		}
 	},
 	plugins: [require("tailwindcss-animate")],

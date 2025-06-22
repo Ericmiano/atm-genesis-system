@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -42,12 +42,13 @@ interface AdminStats {
 }
 
 const AdminScreen: React.FC<AdminScreenProps> = ({ onBack }) => {
+  const [activeTab, setActiveTab] = useState('dashboard');
   const [users, setUsers] = useState<User[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
-  const [fraudAlerts, setFraudAlerts] = useState<FraudAlert[]>([]);
   const [loans, setLoans] = useState<Loan[]>([]);
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [adminActions, setAdminActions] = useState<AdminAction[]>([]);
+  const [fraudAlerts, setFraudAlerts] = useState<FraudAlert[]>([]);
   const [stats, setStats] = useState<AdminStats>({
     totalUsers: 0,
     activeUsers: 0,
@@ -59,10 +60,9 @@ const AdminScreen: React.FC<AdminScreenProps> = ({ onBack }) => {
   });
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [activeTab, setActiveTab] = useState('dashboard');
-  const { language } = useSupabaseATM();
+  const [language, setLanguage] = useState('en');
 
-  const fetchAdminData = async () => {
+  const fetchAdminData = useCallback(async () => {
     setRefreshing(true);
     try {
       const [usersData, transactionsData, loansData] = await Promise.all([
@@ -100,7 +100,7 @@ const AdminScreen: React.FC<AdminScreenProps> = ({ onBack }) => {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, []);
 
   const fetchAuditData = async () => {
     try {
@@ -141,7 +141,7 @@ const AdminScreen: React.FC<AdminScreenProps> = ({ onBack }) => {
     }, 30000); // Check every 30 seconds
 
     return () => clearInterval(interval);
-  }, []);
+  }, [fetchAdminData]);
 
   const handleUserCreated = () => {
     fetchAdminData();

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -113,7 +112,7 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-900 via-blue-800 to-indigo-900 flex items-center justify-center p-4 relative overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-blue-900 via-blue-800 to-indigo-900 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center p-4 relative overflow-hidden">
       {/* Animated background elements */}
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob"></div>
@@ -121,15 +120,15 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
         <div className="absolute top-40 left-40 w-80 h-80 bg-pink-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-4000"></div>
       </div>
 
-      <Card className="w-full max-w-md shadow-2xl border-0 bg-white/95 backdrop-blur-sm animate-scale-in relative z-10">
+      <Card className="w-full max-w-md shadow-2xl border-0 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm animate-scale-in relative z-10">
         <CardHeader className="text-center space-y-4">
           <div className="mx-auto w-20 h-20 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-full flex items-center justify-center animate-pulse shadow-lg">
             <CreditCard className="w-10 h-10 text-white" />
           </div>
-          <CardTitle className="text-3xl font-bold text-gray-800">
+          <CardTitle className="text-3xl font-bold text-gray-800 dark:text-white">
             ATM Genesis
           </CardTitle>
-          <CardDescription className="text-gray-600 text-lg">
+          <CardDescription className="text-gray-600 dark:text-gray-300 text-lg">
             Secure Banking Platform
           </CardDescription>
         </CardHeader>
@@ -292,7 +291,7 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
           )}
 
           {successMessage && (
-            <Alert variant="default" className="mt-4 animate-slide-in-right bg-green-50 border-green-200 text-green-800">
+            <Alert variant="default" className="mt-4 animate-slide-in-right bg-green-50 border-green-200 text-green-800 dark:bg-green-900/20 dark:border-green-800 dark:text-green-400">
               <AlertDescription>{successMessage}</AlertDescription>
             </Alert>
           )}
@@ -302,9 +301,9 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
               <Shield className="w-4 h-4" />
               Demo Accounts (for testing)
             </div>
-            <div className="text-xs space-y-1 text-gray-500">
+            <div className="text-xs space-y-1 text-gray-500 dark:text-gray-400">
               <div>Regular User: john@example.com / password123</div>
-              <div>Admin User: admin@example.com / admin123</div>
+              <div>Admin User: admin@atmgenesis.com / admin123</div>
             </div>
           </div>
         </CardContent>
