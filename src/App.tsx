@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { SupabaseATMProvider, useSupabaseATM } from './contexts/SupabaseATMContext';
 import AuthScreen from './components/AuthScreen';
@@ -58,10 +59,7 @@ class ErrorBoundary extends React.Component<
 }
 
 const ATMApp: React.FC = () => {
-<<<<<<< HEAD
-=======
   console.log('🖥️ ATMApp component rendering...');
->>>>>>> 1a9386906cd0b99ea65a3cb17bc553dad145f0f0
   const { isAuthenticated, loading, currentUser } = useSupabaseATM();
   const [currentScreen, setCurrentScreen] = useState('main');
   const [appLoading, setAppLoading] = useState(true);
@@ -93,36 +91,23 @@ const ATMApp: React.FC = () => {
   });
 
   const handleNavigate = (screen: string) => {
-<<<<<<< HEAD
-    console.log('App: Navigating to screen:', screen);
-=======
     console.log('🧭 Navigating to screen:', screen);
->>>>>>> 1a9386906cd0b99ea65a3cb17bc553dad145f0f0
     setCurrentScreen(screen);
     setError(null); // Clear any previous errors
   };
 
   const handleBack = () => {
-<<<<<<< HEAD
-    console.log('App: Navigating back to main screen');
-=======
     console.log('⬅️ Going back to main menu');
->>>>>>> 1a9386906cd0b99ea65a3cb17bc553dad145f0f0
     setCurrentScreen('main');
     setError(null); // Clear any previous errors
   };
 
   const handleAuthSuccess = () => {
-<<<<<<< HEAD
-    console.log('App: Authentication successful, navigating to main screen');
-=======
     console.log('✅ Auth success, navigating to main');
->>>>>>> 1a9386906cd0b99ea65a3cb17bc553dad145f0f0
     setCurrentScreen('main');
     setError(null); // Clear any previous errors
   };
 
-<<<<<<< HEAD
   // Debug logging
   console.log('App: Current state:', {
     loading,
@@ -149,59 +134,20 @@ const ATMApp: React.FC = () => {
             Reload Application
           </button>
         </div>
-=======
+      </div>
+    );
+  }
+
   // Show loading state
   if (loading) {
     console.log('⏳ App is in loading state');
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-900 via-blue-800 to-blue-900 flex items-center justify-center">
         <div className="text-white text-xl animate-pulse">Loading ATM System...</div>
->>>>>>> 1a9386906cd0b99ea65a3cb17bc553dad145f0f0
       </div>
     );
   }
 
-<<<<<<< HEAD
-  // Show loading screen
-  if (loading && appLoading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-900 via-blue-800 to-indigo-900 flex items-center justify-center">
-        <div className="text-center text-white">
-          <Loader2 className="w-12 h-12 animate-spin mx-auto mb-4" />
-          <h2 className="text-xl font-semibold mb-2">Loading ATM System</h2>
-          <p className="text-blue-100">Please wait while we initialize...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // If still loading after timeout, show auth screen
-  if (loading && !appLoading) {
-    console.log('App: Loading timeout reached, showing auth screen');
-    return <AuthScreen onAuthSuccess={handleAuthSuccess} />;
-  }
-
-  if (!isAuthenticated) {
-    console.log('App: User not authenticated, showing AuthScreen');
-    return <AuthScreen onAuthSuccess={handleAuthSuccess} />;
-  }
-
-  if (!currentUser) {
-    console.log('App: User authenticated but no user data, showing error');
-    return (
-      <div className="min-h-screen bg-gray-100 dark:bg-gray-900 flex items-center justify-center">
-        <div className="text-center">
-          <AlertTriangle className="w-12 h-12 mx-auto mb-4 text-red-600" />
-          <h2 className="text-xl font-semibold mb-2 text-gray-800 dark:text-white">Authentication Error</h2>
-          <p className="text-gray-600 dark:text-gray-300 mb-4">Unable to load user data</p>
-          <button 
-            onClick={() => window.location.reload()} 
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-          >
-            Retry
-          </button>
-        </div>
-=======
   // Show auth screen if not authenticated
   if (!isAuthenticated) {
     console.log('🔒 User not authenticated, showing auth screen');
@@ -214,22 +160,14 @@ const ATMApp: React.FC = () => {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-900 via-blue-800 to-blue-900 flex items-center justify-center">
         <div className="text-white text-xl animate-pulse">Setting up your account...</div>
->>>>>>> 1a9386906cd0b99ea65a3cb17bc553dad145f0f0
       </div>
     );
   }
 
-<<<<<<< HEAD
-  console.log('App: Rendering main application with user:', currentUser.email);
-
-  const renderScreen = () => {
-    console.log('App: Rendering screen:', currentScreen);
-=======
   console.log('✅ User authenticated with data, current screen:', currentScreen);
 
   const renderScreen = () => {
     console.log('🎨 Rendering screen:', currentScreen);
->>>>>>> 1a9386906cd0b99ea65a3cb17bc553dad145f0f0
     try {
       switch (currentScreen) {
         case 'withdrawal':
@@ -252,23 +190,14 @@ const ATMApp: React.FC = () => {
           return <AdminScreen onBack={handleBack} />;
         case 'main':
         default:
-<<<<<<< HEAD
+          console.log('🏠 Rendering Dashboard for user:', currentUser.name);
           return <Dashboard onNavigate={handleNavigate} />;
-      }
-    } catch (screenError) {
-      console.error('App: Error rendering screen:', screenError);
-      setError('Failed to load screen. Please try again.');
-      return null;
-=======
-          console.log('🏠 Rendering MainMenu for user:', currentUser.name);
-          return <MainMenu onNavigate={handleNavigate} />;
       }
     } catch (error) {
       console.error('❌ Error rendering screen:', error);
       // Fallback to main menu on error
       setCurrentScreen('main');
-      return <MainMenu onNavigate={handleNavigate} />;
->>>>>>> 1a9386906cd0b99ea65a3cb17bc553dad145f0f0
+      return <Dashboard onNavigate={handleNavigate} />;
     }
   };
 
@@ -301,21 +230,14 @@ const ATMApp: React.FC = () => {
 };
 
 const App: React.FC = () => {
-<<<<<<< HEAD
-  return (
-    <SupabaseATMProvider>
-      <ErrorBoundary>
-        <ATMApp />
-      </ErrorBoundary>
-    </SupabaseATMProvider>
-  );
-=======
   console.log('🚀 Main App component rendering...');
   
   try {
     return (
       <SupabaseATMProvider>
-        <ATMApp />
+        <ErrorBoundary>
+          <ATMApp />
+        </ErrorBoundary>
       </SupabaseATMProvider>
     );
   } catch (error) {
@@ -335,7 +257,6 @@ const App: React.FC = () => {
       </div>
     );
   }
->>>>>>> 1a9386906cd0b99ea65a3cb17bc553dad145f0f0
 };
 
 export default App;
