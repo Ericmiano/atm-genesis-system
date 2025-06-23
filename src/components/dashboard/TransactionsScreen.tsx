@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -26,10 +27,10 @@ import {
     ArrowUpRight,
     ArrowDownRight
 } from 'lucide-react';
-import { SendMoneyModal } from '../modals/SendMoneyModal';
-import { PayBillModal } from '../modals/PayBillModal';
-import { BuyGoodsModal } from '../modals/BuyGoodsModal';
-import { BuyAirtimeModal } from '../modals/BuyAirtimeModal';
+import SendMoneyModal from '../modals/SendMoneyModal';
+import PayBillModal from '../modals/PayBillModal';
+import BuyGoodsModal from '../modals/BuyGoodsModal';
+import BuyAirtimeModal from '../modals/BuyAirtimeModal';
 import { useSupabaseATM } from '../../contexts/SupabaseATMContext';
 
 interface Transaction {
@@ -462,4 +463,4 @@ const TransactionsScreen: React.FC<TransactionsScreenProps> = ({ transactions, o
   );
 };
 
-export default TransactionsScreen; 
+export default TransactionsScreen;

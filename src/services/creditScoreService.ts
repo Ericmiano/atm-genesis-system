@@ -1,334 +1,228 @@
-import { supabase } from '../integrations/supabase/client';
 
-export interface CreditScore {
+import { supabase } from '@/integrations/supabase/client';
+
+export interface CreditScoreData {
   score: number;
-  maxLoanLimit: number;
-  overdraftLimit: number;
-  riskLevel: 'low' | 'medium' | 'high';
-  lastUpdated: Date;
-}
-
-export interface FinancialMetrics {
-  averageBalance: number;
-  transactionFrequency: number;
-  depositConsistency: number;
-  loanRepaymentHistory: number;
-  overdraftRepaymentHistory: number;
+  factors: {
+    paymentHistory: number;
+    creditUtilization: number;
+    creditLength: number;
+    creditMix: number;
+    newCredit: number;
+  };
+  recommendations: string[];
+  trend: 'improving' | 'stable' | 'declining';
 }
 
 export class CreditScoreService {
-  private static readonly INITIAL_SCORE = 400;
-  private static readonly INITIAL_LOAN_LIMIT = 10000;
-  private static readonly INITIAL_OVERDRAFT_LIMIT = 5000;
-  
-  private static readonly SCORE_WEIGHTS = {
-    loanRepayment: 0.35,
-    overdraftRepayment: 0.25,
-    depositConsistency: 0.20,
-    transactionFrequency: 0.15,
-    averageBalance: 0.05
-  };
-
-  private static readonly RISK_THRESHOLDS = {
-    low: 700,
-    medium: 500
-  };
-
-  /**
-   * Calculate credit score based on user's financial behavior
-   */
-  static async calculateCreditScore(userId: string): Promise<CreditScore> {
+  static async calculateCreditScore(userId: string): Promise<CreditScoreData> {
     try {
-      const metrics = await this.getFinancialMetrics(userId);
-      const score = this.computeScore(metrics);
-      const riskLevel = this.determineRiskLevel(score);
-      const maxLoanLimit = this.calculateLoanLimit(score, metrics);
-      const overdraftLimit = this.calculateOverdraftLimit(score, metrics);
-
-      const creditScore: CreditScore = {
-        score,
-        maxLoanLimit,
-        overdraftLimit,
-        riskLevel,
-        lastUpdated: new Date()
-      };
-
-      // Save to database
-      await this.saveCreditScore(userId, creditScore);
-      
-      return creditScore;
-    } catch (error) {
-      console.error('Error calculating credit score:', error);
-      return this.getDefaultCreditScore();
-    }
-  }
-
-  /**
-   * Get current credit score for user
-   */
-  static async getCreditScore(userId: string): Promise<CreditScore> {
-    try {
-      const { data, error } = await supabase
-        .from('credit_scores')
+      const { data: user, error: userError } = await supabase
+        .from('users')
         .select('*')
-        .eq('user_id', userId)
+        .eq('id', userId)
         .single();
 
-      if (error || !data) {
-        console.log('Credit score not found, calculating new one...');
-        return await this.calculateCreditScore(userId);
-      }
+      if (userError) throw userError;
 
-      return {
-        score: data.score,
-        maxLoanLimit: data.max_loan_limit,
-        overdraftLimit: data.overdraft_limit,
-        riskLevel: data.risk_level,
-        lastUpdated: new Date(data.last_updated)
-      };
-    } catch (error) {
-      console.error('Error fetching credit score:', error);
-      console.log('Returning default credit score due to error');
-      return this.getDefaultCreditScore();
-    }
-  }
+      const { data: transactions, error: transactionsError } = await supabase
+        .from('transactions')
+        .select('*')
+        .eq('user_id', userId);
 
-  /**
-   * Check loan eligibility and calculate maximum loan amount
-   */
-  static async checkLoanEligibility(userId: string, requestedAmount: number): Promise<{
-    eligible: boolean;
-    maxAmount: number;
-    reason?: string;
-    interestRate: number;
-  }> {
-    const creditScore = await this.getCreditScore(userId);
-    const { data: existingLoans } = await supabase
-      .from('loans')
-      .select('amount, remaining_balance')
-      .eq('user_id', userId)
-      .eq('status', 'active');
+      if (transactionsError) throw transactionsError;
 
-    const totalExistingDebt = existingLoans?.reduce((sum, loan) => sum + loan.remaining_balance, 0) || 0;
-    const availableLimit = creditScore.maxLoanLimit - totalExistingDebt;
+      const { data: loans, error: loansError } = await supabase
+        .from('loans')
+        .select('*')
+        .eq('user_id', userId);
 
-    const eligible = availableLimit >= requestedAmount && creditScore.score >= 500;
-    const interestRate = this.calculateInterestRate(creditScore.score);
+      if (loansError) throw loansError;
 
-    return {
-      eligible,
-      maxAmount: availableLimit,
-      reason: !eligible ? this.getEligibilityReason(creditScore, availableLimit, requestedAmount) : undefined,
-      interestRate
-    };
-  }
+      // Calculate credit score based on available data
+      const paymentHistory = this.calculatePaymentHistory(transactions || [], loans || []);
+      const creditUtilization = this.calculateCreditUtilization(user, transactions || []);
+      const creditLength = this.calculateCreditLength(user);
+      const creditMix = this.calculateCreditMix(loans || []);
+      const newCredit = this.calculateNewCredit(loans || []);
 
-  /**
-   * Check overdraft eligibility
-   */
-  static async checkOverdraftEligibility(userId: string, amount: number): Promise<{
-    eligible: boolean;
-    limit: number;
-    fee: number;
-  }> {
-    const creditScore = await this.getCreditScore(userId);
-    const eligible = creditScore.score >= 450 && amount <= creditScore.overdraftLimit;
-    const fee = eligible ? this.calculateOverdraftFee(amount, creditScore.score) : 0;
+      const overallScore = Math.round(
+        paymentHistory * 0.35 +
+        creditUtilization * 0.30 +
+        creditLength * 0.15 +
+        creditMix * 0.10 +
+        newCredit * 0.10
+      );
 
-    return {
-      eligible,
-      limit: creditScore.overdraftLimit,
-      fee
-    };
-  }
-
-  /**
-   * Update credit score after loan repayment
-   */
-  static async updateScoreAfterRepayment(userId: string, wasOnTime: boolean, amount: number): Promise<void> {
-    const currentScore = await this.getCreditScore(userId);
-    const scoreChange = wasOnTime ? 
-      Math.min(50, Math.floor(amount / 1000) * 10) : 
-      Math.max(-100, -Math.floor(amount / 1000) * 20);
-
-    const newScore = Math.max(300, Math.min(850, currentScore.score + scoreChange));
-    
-    await this.updateCreditScore(userId, newScore);
-  }
-
-  /**
-   * Update credit score after overdraft usage
-   */
-  static async updateScoreAfterOverdraft(userId: string, wasRepaidOnTime: boolean): Promise<void> {
-    const currentScore = await this.getCreditScore(userId);
-    const scoreChange = wasRepaidOnTime ? 10 : -30;
-    
-    const newScore = Math.max(300, Math.min(850, currentScore.score + scoreChange));
-    
-    await this.updateCreditScore(userId, newScore);
-  }
-
-  private static async getFinancialMetrics(userId: string): Promise<FinancialMetrics> {
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-    // Get recent transactions
-    const { data: transactions } = await supabase
-      .from('transactions')
-      .select('*')
-      .eq('user_id', userId)
-      .gte('created_at', thirtyDaysAgo.toISOString());
-
-    // Get loan history
-    const { data: loans } = await supabase
-      .from('loans')
-      .select('*')
-      .eq('user_id', userId);
-
-    // Get overdraft history
-    const { data: overdrafts } = await supabase
-      .from('overdrafts')
-      .select('*')
-      .eq('user_id', userId);
-
-    return {
-      averageBalance: this.calculateAverageBalance(transactions || []),
-      transactionFrequency: this.calculateTransactionFrequency(transactions || []),
-      depositConsistency: this.calculateDepositConsistency(transactions || []),
-      loanRepaymentHistory: this.calculateLoanRepaymentHistory(loans || []),
-      overdraftRepaymentHistory: this.calculateOverdraftRepaymentHistory(overdrafts || [])
-    };
-  }
-
-  private static computeScore(metrics: FinancialMetrics): number {
-    const score = 
-      metrics.loanRepaymentHistory * this.SCORE_WEIGHTS.loanRepayment +
-      metrics.overdraftRepaymentHistory * this.SCORE_WEIGHTS.overdraftRepayment +
-      metrics.depositConsistency * this.SCORE_WEIGHTS.depositConsistency +
-      metrics.transactionFrequency * this.SCORE_WEIGHTS.transactionFrequency +
-      metrics.averageBalance * this.SCORE_WEIGHTS.averageBalance;
-
-    return Math.round(score * 1000); // Scale to 0-1000 range
-  }
-
-  private static determineRiskLevel(score: number): 'low' | 'medium' | 'high' {
-    if (score >= this.RISK_THRESHOLDS.low) return 'low';
-    if (score >= this.RISK_THRESHOLDS.medium) return 'medium';
-    return 'high';
-  }
-
-  private static calculateLoanLimit(score: number, metrics: FinancialMetrics): number {
-    const baseLimit = this.INITIAL_LOAN_LIMIT;
-    const scoreMultiplier = score / 400; // Normalize to initial score
-    const activityBonus = Math.min(0.5, metrics.transactionFrequency * 0.1);
-    
-    return Math.round(baseLimit * scoreMultiplier * (1 + activityBonus));
-  }
-
-  private static calculateOverdraftLimit(score: number, metrics: FinancialMetrics): number {
-    const baseLimit = this.INITIAL_OVERDRAFT_LIMIT;
-    const scoreMultiplier = score / 400;
-    const balanceBonus = Math.min(0.3, metrics.averageBalance / 100000);
-    
-    return Math.round(baseLimit * scoreMultiplier * (1 + balanceBonus));
-  }
-
-  private static calculateInterestRate(score: number): number {
-    if (score >= 700) return 0.12; // 12% for excellent credit
-    if (score >= 600) return 0.15; // 15% for good credit
-    if (score >= 500) return 0.18; // 18% for fair credit
-    return 0.25; // 25% for poor credit
-  }
-
-  private static calculateOverdraftFee(amount: number, score: number): number {
-    const baseFee = amount * 0.05; // 5% base fee
-    const scoreDiscount = score >= 600 ? 0.5 : 1; // 50% discount for good credit
-    return Math.round(baseFee * scoreDiscount);
-  }
-
-  private static getEligibilityReason(creditScore: CreditScore, availableLimit: number, requestedAmount: number): string {
-    if (creditScore.score < 500) return 'Credit score too low (minimum 500 required)';
-    if (availableLimit < requestedAmount) return `Insufficient loan limit. Maximum available: KES ${availableLimit.toLocaleString()}`;
-    return 'Not eligible for loans at this time';
-  }
-
-  private static calculateAverageBalance(transactions: any[]): number {
-    if (transactions.length === 0) return 0;
-    const balances = transactions.map(t => t.balance_after || 0);
-    return balances.reduce((sum, balance) => sum + balance, 0) / balances.length;
-  }
-
-  private static calculateTransactionFrequency(transactions: any[]): number {
-    const uniqueDays = new Set(transactions.map(t => new Date(t.created_at).toDateString())).size;
-    return Math.min(1, uniqueDays / 30); // Normalize to 0-1
-  }
-
-  private static calculateDepositConsistency(transactions: any[]): number {
-    const deposits = transactions.filter(t => t.type === 'deposit');
-    const depositDays = new Set(deposits.map(t => new Date(t.created_at).toDateString())).size;
-    return Math.min(1, depositDays / 15); // Normalize to 0-1
-  }
-
-  private static calculateLoanRepaymentHistory(loans: any[]): number {
-    if (loans.length === 0) return 0.5; // Neutral score for new users
-    
-    const onTimeRepayments = loans.filter(loan => 
-      loan.status === 'paid' && 
-      new Date(loan.paid_at) <= new Date(loan.due_date)
-    ).length;
-    
-    return onTimeRepayments / loans.length;
-  }
-
-  private static calculateOverdraftRepaymentHistory(overdrafts: any[]): number {
-    if (overdrafts.length === 0) return 0.5;
-    
-    const onTimeRepayments = overdrafts.filter(od => 
-      od.status === 'repaid' && 
-      new Date(od.repaid_at) <= new Date(od.due_date)
-    ).length;
-    
-    return onTimeRepayments / overdrafts.length;
-  }
-
-  private static async saveCreditScore(userId: string, creditScore: CreditScore): Promise<void> {
-    const { error } = await supabase
-      .from('credit_scores')
-      .upsert({
-        user_id: userId,
-        score: creditScore.score,
-        max_loan_limit: creditScore.maxLoanLimit,
-        overdraft_limit: creditScore.overdraftLimit,
-        risk_level: creditScore.riskLevel,
-        last_updated: creditScore.lastUpdated.toISOString()
+      const recommendations = this.generateRecommendations({
+        paymentHistory,
+        creditUtilization,
+        creditLength,
+        creditMix,
+        newCredit
       });
 
-    if (error) {
-      console.error('Error saving credit score:', error);
+      return {
+        score: Math.max(300, Math.min(850, overallScore)),
+        factors: {
+          paymentHistory,
+          creditUtilization,
+          creditLength,
+          creditMix,
+          newCredit
+        },
+        recommendations,
+        trend: this.determineTrend(user.credit_score || 0, overallScore)
+      };
+    } catch (error) {
+      console.error('Error calculating credit score:', error);
+      return {
+        score: 650, // Default score
+        factors: {
+          paymentHistory: 650,
+          creditUtilization: 650,
+          creditLength: 650,
+          creditMix: 650,
+          newCredit: 650
+        },
+        recommendations: ['Unable to calculate credit score at this time'],
+        trend: 'stable'
+      };
     }
   }
 
-  private static async updateCreditScore(userId: string, newScore: number): Promise<void> {
-    const { error } = await supabase
-      .from('credit_scores')
-      .update({ 
-        score: newScore,
-        last_updated: new Date().toISOString()
+  private static calculatePaymentHistory(transactions: any[], loans: any[]): number {
+    // Calculate based on successful vs failed transactions and loan payments
+    const totalTransactions = transactions.length;
+    if (totalTransactions === 0) return 650; // Default score
+
+    const successfulTransactions = transactions.filter(t => t.status === 'SUCCESS').length;
+    const successRate = successfulTransactions / totalTransactions;
+
+    // Check loan payment history
+    const overdueLoans = loans.filter(l => 
+      l.status === 'ACTIVE' && 
+      l.next_payment_date && 
+      new Date(l.next_payment_date) < new Date()
+    ).length;
+
+    let score = 300 + (successRate * 400); // Base range 300-700
+    
+    // Penalty for overdue loans
+    score -= (overdueLoans * 50);
+
+    return Math.max(300, Math.min(850, score));
+  }
+
+  private static calculateCreditUtilization(user: any, transactions: any[]): number {
+    // Calculate based on balance vs spending patterns
+    const balance = user.balance || 0;
+    const monthlySpending = transactions
+      .filter(t => {
+        const transactionDate = new Date(t.timestamp);
+        const oneMonthAgo = new Date();
+        oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+        return transactionDate >= oneMonthAgo && t.amount < 0; // Negative amounts are spending
       })
-      .eq('user_id', userId);
+      .reduce((sum, t) => sum + Math.abs(t.amount), 0);
 
-    if (error) {
+    if (balance === 0) return 650; // Default if no balance data
+
+    const utilizationRatio = monthlySpending / balance;
+    
+    // Lower utilization is better
+    let score = 850 - (utilizationRatio * 300);
+    return Math.max(300, Math.min(850, score));
+  }
+
+  private static calculateCreditLength(user: any): number {
+    // Calculate based on account age
+    const accountAge = user.created_at ? 
+      (Date.now() - new Date(user.created_at).getTime()) / (1000 * 60 * 60 * 24 * 365) : 0;
+
+    // Longer history is better
+    let score = 300 + (accountAge * 100); // 100 points per year
+    return Math.max(300, Math.min(850, score));
+  }
+
+  private static calculateCreditMix(loans: any[]): number {
+    // Calculate based on variety of credit types
+    const loanTypes = new Set(loans.map(l => l.type)).size;
+    
+    let score = 600; // Base score
+    score += loanTypes * 50; // Bonus for variety
+    
+    return Math.max(300, Math.min(850, score));
+  }
+
+  private static calculateNewCredit(loans: any[]): number {
+    // Calculate based on recent credit applications
+    const recentLoans = loans.filter(l => {
+      const loanDate = new Date(l.application_date);
+      const sixMonthsAgo = new Date();
+      sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+      return loanDate >= sixMonthsAgo;
+    }).length;
+
+    // Too many recent applications hurt the score
+    let score = 750 - (recentLoans * 50);
+    return Math.max(300, Math.min(850, score));
+  }
+
+  private static generateRecommendations(factors: any): string[] {
+    const recommendations: string[] = [];
+
+    if (factors.paymentHistory < 700) {
+      recommendations.push('Improve payment history by ensuring all transactions are successful');
+    }
+
+    if (factors.creditUtilization > 700) {
+      recommendations.push('Reduce spending relative to your account balance');
+    }
+
+    if (factors.creditLength < 600) {
+      recommendations.push('Maintain your account longer to build credit history');
+    }
+
+    if (factors.creditMix < 650) {
+      recommendations.push('Consider diversifying your credit portfolio');
+    }
+
+    if (factors.newCredit < 700) {
+      recommendations.push('Avoid applying for multiple loans in a short period');
+    }
+
+    if (recommendations.length === 0) {
+      recommendations.push('Your credit profile looks good! Keep up the good financial habits.');
+    }
+
+    return recommendations;
+  }
+
+  private static determineTrend(oldScore: number, newScore: number): 'improving' | 'stable' | 'declining' {
+    const difference = newScore - oldScore;
+    
+    if (difference > 10) return 'improving';
+    if (difference < -10) return 'declining';
+    return 'stable';
+  }
+
+  static async updateCreditScore(userId: string): Promise<boolean> {
+    try {
+      const creditData = await this.calculateCreditScore(userId);
+      
+      const { error } = await supabase
+        .from('users')
+        .update({ credit_score: creditData.score })
+        .eq('id', userId);
+
+      if (error) throw error;
+      return true;
+    } catch (error) {
       console.error('Error updating credit score:', error);
+      return false;
     }
   }
+}
 
-  private static getDefaultCreditScore(): CreditScore {
-    return {
-      score: this.INITIAL_SCORE,
-      maxLoanLimit: this.INITIAL_LOAN_LIMIT,
-      overdraftLimit: this.INITIAL_OVERDRAFT_LIMIT,
-      riskLevel: 'high',
-      lastUpdated: new Date()
-    };
-  }
-} 
+export const creditScoreService = new CreditScoreService();
