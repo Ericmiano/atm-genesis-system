@@ -44,12 +44,12 @@ export class MpesaService {
         .update({ balance: user.balance - amount })
         .eq('id', userId);
 
-      // Record transaction
+      // Record transaction using correct transaction type
       await supabase
         .from('transactions')
         .insert({
           user_id: userId,
-          type: 'SEND_MONEY',
+          type: 'TRANSFER', // Use valid transaction type
           amount: -amount,
           description: `Money sent to ${recipient}`,
           status: 'SUCCESS',
@@ -95,12 +95,12 @@ export class MpesaService {
         .update({ balance: user.balance - amount })
         .eq('id', userId);
 
-      // Record transaction
+      // Record transaction using correct transaction type
       await supabase
         .from('transactions')
         .insert({
           user_id: userId,
-          type: 'PAYBILL',
+          type: 'BILL_PAYMENT', // Use valid transaction type
           amount: -amount,
           description: `Bill payment to ${billNumber}`,
           status: 'SUCCESS',
@@ -146,12 +146,12 @@ export class MpesaService {
         .update({ balance: user.balance - amount })
         .eq('id', userId);
 
-      // Record transaction
+      // Record transaction using correct transaction type
       await supabase
         .from('transactions')
         .insert({
           user_id: userId,
-          type: 'BUY_GOODS',
+          type: 'WITHDRAWAL', // Use valid transaction type
           amount: -amount,
           description: `Purchase from till ${tillNumber}`,
           status: 'SUCCESS',
@@ -197,12 +197,12 @@ export class MpesaService {
         .update({ balance: user.balance - amount })
         .eq('id', userId);
 
-      // Record transaction
+      // Record transaction using correct transaction type
       await supabase
         .from('transactions')
         .insert({
           user_id: userId,
-          type: 'BUY_AIRTIME',
+          type: 'WITHDRAWAL', // Use valid transaction type
           amount: -amount,
           description: `Airtime for ${phoneNumber}`,
           status: 'SUCCESS',
@@ -222,14 +222,14 @@ export class MpesaService {
         .from('transactions')
         .select('*')
         .eq('user_id', userId)
-        .in('type', ['SEND_MONEY', 'PAYBILL', 'BUY_GOODS', 'BUY_AIRTIME'])
+        .in('type', ['TRANSFER', 'BILL_PAYMENT', 'WITHDRAWAL']) // Use valid transaction types
         .order('timestamp', { ascending: false });
 
       if (error) throw error;
 
       return transactions.map(t => ({
         id: t.id,
-        type: t.type as 'SEND_MONEY' | 'PAYBILL' | 'BUY_GOODS' | 'BUY_AIRTIME',
+        type: this.mapTransactionType(t.type, t.description),
         amount: Math.abs(t.amount),
         recipient: t.to_account || '',
         status: t.status as 'SUCCESS' | 'FAILED' | 'PENDING',
@@ -240,6 +240,14 @@ export class MpesaService {
       console.error('Error fetching transaction history:', error);
       return [];
     }
+  }
+
+  private static mapTransactionType(dbType: string, description: string): 'SEND_MONEY' | 'PAYBILL' | 'BUY_GOODS' | 'BUY_AIRTIME' {
+    if (description.includes('Money sent')) return 'SEND_MONEY';
+    if (description.includes('Bill payment')) return 'PAYBILL';
+    if (description.includes('Purchase from till')) return 'BUY_GOODS';
+    if (description.includes('Airtime')) return 'BUY_AIRTIME';
+    return 'SEND_MONEY'; // Default fallback
   }
 }
 

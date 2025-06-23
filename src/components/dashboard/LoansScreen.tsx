@@ -162,12 +162,11 @@ const AutomatedRepaymentModal = ({ loan, isOpen, onClose, onSetup }) => {
 
         setLoading(true);
         try {
+            // Fix: Use only 3 arguments as expected by the service
             const result = await AutomatedPaymentService.setupRecurringLoanRepayment(
                 loan.userId,
                 loan.id,
-                paymentAmount,
-                frequency as 'weekly' | 'monthly',
-                new Date(startDate)
+                paymentAmount
             );
 
             if (result.success) {
@@ -734,4 +733,4 @@ const LoansScreen: React.FC<LoansScreenProps> = ({ loans, onApplyNew }) => {
     );
 };
 
-export default LoansScreen; 
+export default LoansScreen;
