@@ -137,14 +137,14 @@ const Dashboard: React.FC = () => {
                                 <div className="banking-card p-8 bg-gradient-to-br from-green-500/10 to-blue-500/10">
                                     <div className="text-center mb-6">
                                         <div className="text-6xl font-bold gradient-blue-green bg-clip-text text-transparent mb-2">
-                                            {currentUser?.credit_score || 400}
+                                            {currentUser?.creditScore || 400}
                                         </div>
                                         <p className="text-gray-400">Current Credit Score</p>
                                     </div>
                                     <div className="credit-score-bar mb-4">
                                         <div 
                                             className="credit-score-progress" 
-                                            style={{ width: `${((currentUser?.credit_score || 400) / 850) * 100}%` }}
+                                            style={{ width: `${((currentUser?.creditScore || 400) / 850) * 100}%` }}
                                         ></div>
                                     </div>
                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">

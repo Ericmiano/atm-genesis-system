@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -274,7 +273,7 @@ const EnhancedSidebar: React.FC<EnhancedSidebarProps> = ({
                             <div className="flex justify-between items-center">
                                 <span className="text-xs text-gray-400">Credit Score</span>
                                 <span className="text-sm font-bold text-blue-400">
-                                    {currentUser?.credit_score || 400}
+                                    {currentUser?.creditScore || 400}
                                 </span>
                             </div>
                             <div className="flex justify-between items-center">
