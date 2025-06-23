@@ -3,6 +3,13 @@ import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { RefreshCw, AlertTriangle, Bug, Home } from 'lucide-react';
 
+// Extend Window interface to include gtag
+declare global {
+  interface Window {
+    gtag?: (...args: any[]) => void;
+  }
+}
+
 interface ErrorBoundaryState {
   hasError: boolean;
   error?: Error;
@@ -184,4 +191,4 @@ const DefaultErrorFallback: React.FC<ErrorFallbackProps> = ({
 
 export default ErrorBoundary;
 export { DefaultErrorFallback };
-export type { ErrorFallbackProps }; 
+export type { ErrorFallbackProps };
