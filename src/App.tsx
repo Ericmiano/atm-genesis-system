@@ -1,39 +1,84 @@
+
 import React from 'react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { SupabaseATMProvider, useSupabaseATM } from './contexts/SupabaseATMContext';
+import AuthScreen from './components/AuthScreen';
+import Dashboard from './components/Dashboard';
+import LoadingSpinner from './components/LoadingSpinner';
+import AppInitializer from './components/AppInitializer';
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
+
+const AppContent: React.FC = () => {
+  try {
+    const { currentUser, loading, initialized } = useSupabaseATM();
+
+    console.log('AppContent state:', { currentUser, loading, initialized });
+
+    // Show loading spinner while initializing
+    if (loading || !initialized) {
+      return <LoadingSpinner />;
+    }
+
+    // Show dashboard if user is authenticated
+    if (currentUser) {
+      return <Dashboard />;
+    }
+
+    // Show auth screen for non-authenticated users
+    return (
+      <AuthScreen 
+        onAuthSuccess={() => {
+          console.log('Auth success, user should be redirected automatically');
+        }} 
+      />
+    );
+  } catch (error) {
+    console.error('Error in AppContent, falling back to AppInitializer:', error);
+    
+    // Fallback to simple initializer if context fails
+    return (
+      <AppInitializer>
+        {({ user, loading, initialized }) => {
+          if (loading || !initialized) {
+            return <LoadingSpinner />;
+          }
+
+          if (user) {
+            return <Dashboard />;
+          }
+
+          return (
+            <AuthScreen 
+              onAuthSuccess={() => {
+                console.log('Auth success via fallback');
+              }} 
+            />
+          );
+        }}
+      </AppInitializer>
+    );
+  }
+};
 
 const App: React.FC = () => {
   console.log('App component rendering...');
   
   return (
-    <div style={{ 
-      minHeight: '100vh', 
-      backgroundColor: '#000', 
-      color: '#fff', 
-      display: 'flex', 
-      alignItems: 'center', 
-      justifyContent: 'center',
-      fontFamily: 'Arial, sans-serif'
-    }}>
-      <div style={{ textAlign: 'center' }}>
-        <h1 style={{ fontSize: '2rem', marginBottom: '1rem' }}>ATM Genesis System</h1>
-        <p style={{ fontSize: '1.2rem', marginBottom: '2rem', color: '#ccc' }}>System is loading...</p>
-        <div style={{ 
-          width: '3rem', 
-          height: '3rem', 
-          border: '4px solid #3b82f6', 
-          borderTop: '4px solid transparent', 
-          borderRadius: '50%',
-          animation: 'spin 1s linear infinite',
-          margin: '0 auto'
-        }}></div>
-        <p style={{ marginTop: '1rem', fontSize: '0.9rem', color: '#888' }}>Checking system components...</p>
-      </div>
-      <style>{`
-        @keyframes spin {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
-      `}</style>
-    </div>
+    <QueryClientProvider client={queryClient}>
+      <SupabaseATMProvider>
+        <div className="min-h-screen bg-[#0E0E0E] text-[#F1F1F1]">
+          <AppContent />
+        </div>
+      </SupabaseATMProvider>
+    </QueryClientProvider>
   );
 };
 
