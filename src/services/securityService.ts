@@ -416,19 +416,26 @@ export class SecurityService {
   }
 
   // Audit Logging
-  private async logSecurityEvent(userId: string | null, action: string, details: string): Promise<void> {
+  public async logSecurityEvent(userId: string, event: string, details: string): Promise<void> {
     try {
       await supabase
         .from('audit_logs')
         .insert({
           user_id: userId,
-          action,
-          details,
-          timestamp: new Date().toISOString()
+          action: event,
+          details: details,
+          timestamp: new Date().toISOString(),
+          ip_address: this.getCurrentIP(),
+          user_agent: navigator.userAgent
         });
     } catch (error) {
-      console.error('Security event logging error:', error);
+      console.error('Failed to log security event:', error);
     }
+  }
+
+  private getCurrentIP(): string {
+    // In a real implementation, this would get the actual IP
+    return '127.0.0.1';
   }
 
   private async logFraudAlert(userId: string, type: string, description: string): Promise<void> {
