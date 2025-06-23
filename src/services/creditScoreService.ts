@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 
 export interface CreditScoreData {
@@ -15,6 +14,10 @@ export interface CreditScoreData {
 }
 
 export class CreditScoreService {
+  static async getCreditScore(userId: string): Promise<CreditScoreData> {
+    return await this.calculateCreditScore(userId);
+  }
+
   static async calculateCreditScore(userId: string): Promise<CreditScoreData> {
     try {
       const { data: user, error: userError } = await supabase

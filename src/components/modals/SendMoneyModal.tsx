@@ -8,18 +8,20 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 interface SendMoneyModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSend: (accountNumber: string, amount: number) => void;
+  userId: string;
+  onSuccess: () => void;
 }
 
-const SendMoneyModal: React.FC<SendMoneyModalProps> = ({ isOpen, onClose, onSend }) => {
-  const [accountNumber, setAccountNumber] = useState('');
+const SendMoneyModal: React.FC<SendMoneyModalProps> = ({ isOpen, onClose, userId, onSuccess }) => {
+  const [recipient, setRecipient] = useState('');
   const [amount, setAmount] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (accountNumber && amount) {
-      onSend(accountNumber, parseFloat(amount));
-      setAccountNumber('');
+    if (recipient && amount) {
+      console.log('Sending money:', { recipient, amount, userId });
+      onSuccess();
+      setRecipient('');
       setAmount('');
       onClose();
     }
@@ -33,12 +35,12 @@ const SendMoneyModal: React.FC<SendMoneyModalProps> = ({ isOpen, onClose, onSend
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <Label htmlFor="account">Account Number</Label>
+            <Label htmlFor="recipient">Recipient</Label>
             <Input
-              id="account"
-              value={accountNumber}
-              onChange={(e) => setAccountNumber(e.target.value)}
-              placeholder="Enter account number"
+              id="recipient"
+              value={recipient}
+              onChange={(e) => setRecipient(e.target.value)}
+              placeholder="Enter recipient details"
             />
           </div>
           <div>

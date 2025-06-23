@@ -7,7 +7,7 @@ import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar, TrendingUp, TrendingDown, Users, DollarSign, Activity, Shield, BarChart3, Clock, AlertTriangle } from 'lucide-react';
-import { analyticsService, AnalyticsEventType } from '@/services/analyticsService';
+import { AnalyticsService, AnalyticsEventType } from '@/services/analyticsService';
 
 interface AnalyticsData {
   transactions: any;
@@ -37,11 +37,11 @@ const AnalyticsDashboard: React.FC = () => {
       const startDate = getStartDate(timeRange);
 
       const [transactions, performance, business, fraud, realTime] = await Promise.all([
-        analyticsService.getTransactionAnalytics(startDate, endDate),
-        analyticsService.getPerformanceMetrics(timeRange),
-        analyticsService.getBusinessIntelligence(),
-        analyticsService.getFraudAnalytics(timeRange),
-        analyticsService.getRealTimeAnalytics()
+        AnalyticsService.getTransactionAnalytics(startDate, endDate),
+        AnalyticsService.getPerformanceMetrics(timeRange),
+        AnalyticsService.getBusinessIntelligence(),
+        AnalyticsService.getFraudAnalytics(timeRange),
+        AnalyticsService.getRealTimeAnalytics()
       ]);
 
       setAnalyticsData({
@@ -61,7 +61,7 @@ const AnalyticsDashboard: React.FC = () => {
 
   const loadRealTimeData = async () => {
     try {
-      const realTime = await analyticsService.getRealTimeAnalytics();
+      const realTime = await AnalyticsService.getRealTimeAnalytics();
       setAnalyticsData(prev => prev ? { ...prev, realTime } : null);
     } catch (err) {
       console.error('Real-time data loading error:', err);
@@ -174,7 +174,7 @@ const AnalyticsDashboard: React.FC = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Active Users</p>
-                  <p className="text-2xl font-bold">{analyticsData.realTime.activeUsers}</p>
+                  <p className="text-2xl font-bold">{analyticsData.realTime?.activeUsers || 0}</p>
                 </div>
                 <Users className="h-8 w-8 text-green-600" />
               </div>
@@ -191,8 +191,8 @@ const AnalyticsDashboard: React.FC = () => {
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">Current Transactions</p>
-                  <p className="text-2xl font-bold">{analyticsData.realTime.currentTransactions}</p>
+                  <p className="text-sm font-medium text-muted-foreground">Transactions/Min</p>
+                  <p className="text-2xl font-bold">{analyticsData.realTime?.transactionsPerMinute || 0}</p>
                 </div>
                 <Activity className="h-8 w-8 text-blue-600" />
               </div>
@@ -209,10 +209,8 @@ const AnalyticsDashboard: React.FC = () => {
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">System Health</p>
-                  <Badge className={getSystemHealthColor(analyticsData.realTime.systemHealth)}>
-                    {analyticsData.realTime.systemHealth}
-                  </Badge>
+                  <p className="text-sm font-medium text-muted-foreground">System Load</p>
+                  <p className="text-2xl font-bold">{Math.round(analyticsData.realTime?.systemLoad || 0)}%</p>
                 </div>
                 <Shield className="h-8 w-8 text-purple-600" />
               </div>
@@ -229,14 +227,92 @@ const AnalyticsDashboard: React.FC = () => {
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">Recent Events</p>
-                  <p className="text-2xl font-bold">{analyticsData.realTime.recentEvents.length}</p>
+                  <p className="text-sm font-medium text-muted-foreground">Response Time</p>
+                  <p className="text-2xl font-bold">{Math.round(analyticsData.realTime?.responseTime || 0)}ms</p>
                 </div>
                 <Clock className="h-8 w-8 text-orange-600" />
               </div>
             </CardContent>
           </Card>
         </motion.div>
+      </div>
+
+      {/* Simple Overview Cards */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <DollarSign className="h-5 w-5" />
+              <span>Transactions</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <div className="flex justify-between">
+                <span className="text-sm text-muted-foreground">Total</span>
+                <span className="font-medium">{analyticsData.transactions?.totalTransactions || 0}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm text-muted-foreground">Success Rate</span>
+                <span className="font-medium text-green-600">{((analyticsData.transactions?.successfulTransactions || 0) / (analyticsData.transactions?.totalTransactions || 1) * 100).toFixed(1)}%</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm text-muted-foreground">Total Amount</span>
+                <span className="font-medium">{formatCurrency(analyticsData.transactions?.totalAmount || 0)}</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <BarChart3 className="h-5 w-5" />
+              <span>Performance</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <div className="flex justify-between">
+                <span className="text-sm text-muted-foreground">Avg Response</span>
+                <span className="font-medium">{Math.round(analyticsData.performance?.responseTime || 0)}ms</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm text-muted-foreground">Uptime</span>
+                <span className="font-medium text-green-600">{(analyticsData.performance?.uptime || 99.9).toFixed(1)}%</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm text-muted-foreground">Error Rate</span>
+                <span className="font-medium">{(analyticsData.performance?.errorRate || 0).toFixed(2)}%</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <Users className="h-5 w-5" />
+              <span>Users</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <div className="flex justify-between">
+                <span className="text-sm text-muted-foreground">Total Users</span>
+                <span className="font-medium">{analyticsData.business?.totalUsers || 0}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm text-muted-foreground">Active Users</span>
+                <span className="font-medium">{analyticsData.business?.activeUsers || 0}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm text-muted-foreground">Revenue</span>
+                <span className="font-medium">{formatCurrency(analyticsData.business?.totalRevenue || 0)}</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Main Analytics Tabs */}
@@ -701,4 +777,4 @@ const AnalyticsDashboard: React.FC = () => {
   );
 };
 
-export default AnalyticsDashboard; 
+export default AnalyticsDashboard;

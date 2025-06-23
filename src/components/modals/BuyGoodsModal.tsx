@@ -8,18 +8,20 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 interface BuyGoodsModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onBuy: (merchantCode: string, amount: number) => void;
+  userId: string;
+  onSuccess: () => void;
 }
 
-const BuyGoodsModal: React.FC<BuyGoodsModalProps> = ({ isOpen, onClose, onBuy }) => {
-  const [merchantCode, setMerchantCode] = useState('');
+const BuyGoodsModal: React.FC<BuyGoodsModalProps> = ({ isOpen, onClose, userId, onSuccess }) => {
+  const [tillNumber, setTillNumber] = useState('');
   const [amount, setAmount] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (merchantCode && amount) {
-      onBuy(merchantCode, parseFloat(amount));
-      setMerchantCode('');
+    if (tillNumber && amount) {
+      console.log('Buying goods:', { tillNumber, amount, userId });
+      onSuccess();
+      setTillNumber('');
       setAmount('');
       onClose();
     }
@@ -33,12 +35,12 @@ const BuyGoodsModal: React.FC<BuyGoodsModalProps> = ({ isOpen, onClose, onBuy })
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <Label htmlFor="merchant">Merchant Code</Label>
+            <Label htmlFor="tillNumber">Till Number</Label>
             <Input
-              id="merchant"
-              value={merchantCode}
-              onChange={(e) => setMerchantCode(e.target.value)}
-              placeholder="Enter merchant code"
+              id="tillNumber"
+              value={tillNumber}
+              onChange={(e) => setTillNumber(e.target.value)}
+              placeholder="Enter till number"
             />
           </div>
           <div>

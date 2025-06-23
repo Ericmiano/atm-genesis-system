@@ -1,6 +1,6 @@
 
 import { useState, useEffect, useCallback } from 'react';
-import { analyticsService, AnalyticsEventType } from '@/services/analyticsService';
+import { AnalyticsService, AnalyticsEventType } from '@/services/analyticsService';
 
 interface AnalyticsHook {
   trackPageView: (pageName: string) => void;
@@ -18,7 +18,7 @@ interface AnalyticsHook {
   getBusinessIntelligence: () => Promise<any>;
   getFraudAnalytics: (timeRange: string) => Promise<any>;
   getRealTimeAnalytics: () => Promise<any>;
-  generateAnalyticsReport: (reportType: string, startDate: Date, endDate: Date) => Promise<any>;
+  generateAnalyticsReport: (reportType: 'daily' | 'weekly' | 'monthly', startDate: Date, endDate: Date) => Promise<any>;
   isExporting: boolean;
   exportReport: (format: 'pdf' | 'csv' | 'json') => Promise<void>;
   startDate: Date;
@@ -36,73 +36,73 @@ export const useAnalytics = (): AnalyticsHook => {
   const [endDate, setEndDate] = useState(new Date());
 
   const trackPageView = useCallback((pageName: string) => {
-    analyticsService.trackEvent(AnalyticsEventType.PAGE_VIEW, pageName);
+    AnalyticsService.trackEvent(AnalyticsEventType.PAGE_VIEW, pageName);
   }, []);
 
   const trackUserAction = useCallback((actionName: string, properties?: Record<string, any>) => {
-    analyticsService.trackEvent(AnalyticsEventType.USER_ACTION, actionName, properties);
+    AnalyticsService.trackEvent(AnalyticsEventType.USER_ACTION, actionName, properties);
   }, []);
 
   const trackTransaction = useCallback((transactionName: string, properties?: Record<string, any>) => {
-    analyticsService.trackEvent(AnalyticsEventType.TRANSACTION, transactionName, properties);
+    AnalyticsService.trackEvent(AnalyticsEventType.TRANSACTION, transactionName, properties);
   }, []);
 
   const trackError = useCallback((errorName: string, errorMessage?: string) => {
-    analyticsService.trackEvent(AnalyticsEventType.ERROR, errorName, { errorMessage });
+    AnalyticsService.trackEvent(AnalyticsEventType.ERROR, errorName, { errorMessage });
   }, []);
 
   const trackPerformance = useCallback((eventName: string, duration: number, success: boolean = true) => {
-    analyticsService.trackEvent(AnalyticsEventType.PERFORMANCE, eventName, { duration, success });
+    AnalyticsService.trackEvent(AnalyticsEventType.PERFORMANCE, eventName, { duration, success });
   }, []);
 
   const trackSecurityEvent = useCallback((eventName: string, properties?: Record<string, any>) => {
-    analyticsService.trackEvent(AnalyticsEventType.SECURITY, eventName, properties);
+    AnalyticsService.trackEvent(AnalyticsEventType.SECURITY, eventName, properties);
   }, []);
 
   const trackFeatureUsage = useCallback((featureName: string, properties?: Record<string, any>) => {
-    analyticsService.trackEvent(AnalyticsEventType.FEATURE_USAGE, featureName, properties);
+    AnalyticsService.trackEvent(AnalyticsEventType.FEATURE_USAGE, featureName, properties);
   }, []);
 
   const trackConversion = useCallback((conversionName: string, properties?: Record<string, any>) => {
-    analyticsService.trackEvent(AnalyticsEventType.CONVERSION, conversionName, properties);
+    AnalyticsService.trackEvent(AnalyticsEventType.CONVERSION, conversionName, properties);
   }, []);
 
   const trackRetention = useCallback((retentionName: string, properties?: Record<string, any>) => {
-    analyticsService.trackEvent(AnalyticsEventType.RETENTION, retentionName, properties);
+    AnalyticsService.trackEvent(AnalyticsEventType.RETENTION, retentionName, properties);
   }, []);
 
   const trackEngagement = useCallback((engagementName: string, properties?: Record<string, any>) => {
-    analyticsService.trackEvent(AnalyticsEventType.ENGAGEMENT, engagementName, properties);
+    AnalyticsService.trackEvent(AnalyticsEventType.ENGAGEMENT, engagementName, properties);
   }, []);
 
   const getTransactionAnalytics = useCallback(async (startDate: Date, endDate: Date, aggregation: string) => {
-    return await analyticsService.getTransactionAnalytics(startDate, endDate, aggregation);
+    return await AnalyticsService.getTransactionAnalytics(startDate, endDate, aggregation);
   }, []);
 
   const getPerformanceMetrics = useCallback(async (timeRange: string) => {
-    return await analyticsService.getPerformanceMetrics(timeRange);
+    return await AnalyticsService.getPerformanceMetrics(timeRange);
   }, []);
 
   const getBusinessIntelligence = useCallback(async () => {
-    return await analyticsService.getBusinessIntelligence();
+    return await AnalyticsService.getBusinessIntelligence();
   }, []);
 
   const getFraudAnalytics = useCallback(async (timeRange: string) => {
-    return await analyticsService.getFraudAnalytics(timeRange);
+    return await AnalyticsService.getFraudAnalytics(timeRange);
   }, []);
 
   const getRealTimeAnalytics = useCallback(async () => {
-    return await analyticsService.getRealTimeAnalytics();
+    return await AnalyticsService.getRealTimeAnalytics();
   }, []);
 
   const generateAnalyticsReport = useCallback(async (reportType: 'daily' | 'weekly' | 'monthly', startDate: Date, endDate: Date) => {
-    return await analyticsService.generateAnalyticsReport(reportType, startDate, endDate);
+    return await AnalyticsService.generateAnalyticsReport(reportType, startDate, endDate);
   }, []);
 
   const exportReport = useCallback(async (format: 'pdf' | 'csv' | 'json' = 'json') => {
     try {
       setIsExporting(true);
-      const report = await analyticsService.generateAnalyticsReport('monthly', startDate, endDate);
+      const report = await AnalyticsService.generateAnalyticsReport('monthly', startDate, endDate);
       
       let content: string;
       let mimeType: string;
@@ -204,7 +204,7 @@ export const useAnalyticsInsights = () => {
             description: 'Monthly revenue has grown by 12% compared to last month',
             priority: 'low'
           }
-        ]);
+        ] as any);
 
         setRecommendations([
           'Consider implementing automated scaling for high-traffic periods',
@@ -212,7 +212,7 @@ export const useAnalyticsInsights = () => {
           'Monitor system performance metrics more frequently during peak hours'
         ]);
       } catch (err) {
-        setError(err);
+        setError(err as any);
       } finally {
         setIsLoading(false);
       }
@@ -232,10 +232,10 @@ export const useAnalyticsReport = (reportType: string, startDate: Date, endDate:
   const refetch = useCallback(async () => {
     setIsLoading(true);
     try {
-      const report = await analyticsService.generateAnalyticsReport(reportType as 'daily' | 'weekly' | 'monthly', startDate, endDate);
+      const report = await AnalyticsService.generateAnalyticsReport(reportType as 'daily' | 'weekly' | 'monthly', startDate, endDate);
       setData(report);
     } catch (err) {
-      setError(err);
+      setError(err as any);
     } finally {
       setIsLoading(false);
     }
@@ -254,7 +254,7 @@ export const useAnalyticsExport = () => {
   const mutate = useCallback(async (params: { reportType: string; startDate: Date; endDate: Date; format: string }) => {
     setIsPending(true);
     try {
-      const report = await analyticsService.generateAnalyticsReport(
+      const report = await AnalyticsService.generateAnalyticsReport(
         params.reportType as 'daily' | 'weekly' | 'monthly', 
         params.startDate, 
         params.endDate

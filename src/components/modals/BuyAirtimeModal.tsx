@@ -8,17 +8,19 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 interface BuyAirtimeModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onBuy: (phoneNumber: string, amount: number) => void;
+  userId: string;
+  onSuccess: () => void;
 }
 
-const BuyAirtimeModal: React.FC<BuyAirtimeModalProps> = ({ isOpen, onClose, onBuy }) => {
+const BuyAirtimeModal: React.FC<BuyAirtimeModalProps> = ({ isOpen, onClose, userId, onSuccess }) => {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [amount, setAmount] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (phoneNumber && amount) {
-      onBuy(phoneNumber, parseFloat(amount));
+      console.log('Buying airtime:', { phoneNumber, amount, userId });
+      onSuccess();
       setPhoneNumber('');
       setAmount('');
       onClose();

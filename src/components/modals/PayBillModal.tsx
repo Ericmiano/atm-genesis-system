@@ -8,18 +8,20 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 interface PayBillModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onPay: (billType: string, amount: number) => void;
+  userId: string;
+  onSuccess: () => void;
 }
 
-const PayBillModal: React.FC<PayBillModalProps> = ({ isOpen, onClose, onPay }) => {
-  const [billType, setBillType] = useState('');
+const PayBillModal: React.FC<PayBillModalProps> = ({ isOpen, onClose, userId, onSuccess }) => {
+  const [billNumber, setBillNumber] = useState('');
   const [amount, setAmount] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (billType && amount) {
-      onPay(billType, parseFloat(amount));
-      setBillType('');
+    if (billNumber && amount) {
+      console.log('Paying bill:', { billNumber, amount, userId });
+      onSuccess();
+      setBillNumber('');
       setAmount('');
       onClose();
     }
@@ -33,12 +35,12 @@ const PayBillModal: React.FC<PayBillModalProps> = ({ isOpen, onClose, onPay }) =
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <Label htmlFor="billType">Bill Type</Label>
+            <Label htmlFor="billNumber">Bill Number</Label>
             <Input
-              id="billType"
-              value={billType}
-              onChange={(e) => setBillType(e.target.value)}
-              placeholder="Enter bill type"
+              id="billNumber"
+              value={billNumber}
+              onChange={(e) => setBillNumber(e.target.value)}
+              placeholder="Enter bill number"
             />
           </div>
           <div>

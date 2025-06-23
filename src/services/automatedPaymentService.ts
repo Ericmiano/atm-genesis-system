@@ -102,14 +102,14 @@ export class AutomatedPaymentService {
     }
   }
 
-  static async setupRecurringLoanRepayment(userId: string, loanId: string, amount: number): Promise<boolean> {
+  static async setupRecurringLoanRepayment(userId: string, loanId: string, amount: number): Promise<{ success: boolean; error?: string }> {
     try {
       console.log('Setting up recurring loan repayment:', { userId, loanId, amount });
       // Would create recurring payment schedule
-      return true;
+      return { success: true };
     } catch (error) {
       console.error('Error setting up recurring loan repayment:', error);
-      return false;
+      return { success: false, error: 'Failed to setup recurring payment' };
     }
   }
 
