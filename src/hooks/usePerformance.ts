@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import React from 'react';
 
 interface PerformanceMetrics {
   loadTime: number;
@@ -306,11 +307,11 @@ export const performanceUtils = {
 };
 
 // Performance monitoring HOC
-export const withPerformanceMonitoring = <P extends object>(
+export const withPerformanceMonitoring = <P extends Record<string, any>>(
   Component: React.ComponentType<P>,
   componentName: string
 ): React.ComponentType<P> => {
-  return (props: P) => {
+  const WrappedComponent = (props: P) => {
     const { measureRender } = usePerformance();
     const endMeasure = measureRender(componentName);
 
@@ -318,6 +319,9 @@ export const withPerformanceMonitoring = <P extends object>(
       endMeasure();
     });
 
-    return <Component {...props} />;
+    return React.createElement(Component, props);
   };
-}; 
+
+  WrappedComponent.displayName = `withPerformanceMonitoring(${componentName})`;
+  return WrappedComponent;
+};
