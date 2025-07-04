@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SupabaseATMProvider, useSupabaseATM } from './contexts/SupabaseATMContext';
 import { EnhancedThemeProvider } from './contexts/EnhancedThemeContext';
@@ -8,6 +8,12 @@ import AuthScreen from './components/AuthScreen';
 import Dashboard from './components/Dashboard';
 import EnhancedLoadingSpinner from './components/enhanced/EnhancedLoadingSpinner';
 import AppInitializer from './components/AppInitializer';
+import { 
+  registerServiceWorker, 
+  requestNotificationPermission, 
+  checkInstallPrompt,
+  onConnectionChange 
+} from './utils/pwaUtils';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -90,6 +96,44 @@ const AppContent: React.FC = () => {
 
 const App: React.FC = () => {
   console.log('App component rendering...');
+  
+  useEffect(() => {
+    // Initialize PWA features
+    registerServiceWorker();
+    requestNotificationPermission();
+    checkInstallPrompt();
+    
+    // Monitor connection status
+    onConnectionChange((isOnline) => {
+      console.log('Connection status changed:', isOnline ? 'Online' : 'Offline');
+      
+      if (!isOnline) {
+        // Show offline notification
+        const offlineToast = document.createElement('div');
+        offlineToast.className = 'fixed top-4 right-4 bg-yellow-600 text-white px-4 py-2 rounded-lg shadow-lg z-50';
+        offlineToast.textContent = 'You are now offline. Some features may be limited.';
+        document.body.appendChild(offlineToast);
+        
+        setTimeout(() => {
+          if (offlineToast.parentNode) {
+            offlineToast.remove();
+          }
+        }, 5000);
+      } else {
+        // Show online notification
+        const onlineToast = document.createElement('div');
+        onlineToast.className = 'fixed top-4 right-4 bg-green-600 text-white px-4 py-2 rounded-lg shadow-lg z-50';
+        onlineToast.textContent = 'Connection restored. All features are available.';
+        document.body.appendChild(onlineToast);
+        
+        setTimeout(() => {
+          if (onlineToast.parentNode) {
+            onlineToast.remove();
+          }
+        }, 3000);
+      }
+    });
+  }, []);
   
   return (
     <QueryClientProvider client={queryClient}>

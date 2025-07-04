@@ -2,204 +2,66 @@
 import { supabase } from '@/integrations/supabase/client';
 import { User } from '../types/atm';
 
-// Security configuration
-const SECURITY_CONFIG = {
-  // Password requirements
-  PASSWORD_MIN_LENGTH: 8,
-  PASSWORD_REQUIRE_UPPERCASE: true,
-  PASSWORD_REQUIRE_LOWERCASE: true,
-  PASSWORD_REQUIRE_NUMBERS: true,
-  PASSWORD_REQUIRE_SPECIAL_CHARS: true,
-  
-  // Session management
-  SESSION_TIMEOUT: 30 * 60 * 1000, // 30 minutes
-  MAX_LOGIN_ATTEMPTS: 5,
-  LOCKOUT_DURATION: 15 * 60 * 1000, // 15 minutes
-  
-  // Rate limiting
-  RATE_LIMIT_WINDOW: 60 * 1000, // 1 minute
-  MAX_REQUESTS_PER_WINDOW: 100,
-  
-  // Input validation
-  MAX_INPUT_LENGTH: 1000,
-  ALLOWED_FILE_TYPES: ['image/jpeg', 'image/png', 'image/gif', 'application/pdf'],
-  MAX_FILE_SIZE: 5 * 1024 * 1024, // 5MB
-};
-
-// Security event types
-export enum SecurityEventType {
-  LOGIN_SUCCESS = 'LOGIN_SUCCESS',
-  LOGIN_FAILED = 'LOGIN_FAILED',
-  LOGOUT = 'LOGOUT',
-  PASSWORD_CHANGE = 'PASSWORD_CHANGE',
-  SUSPICIOUS_ACTIVITY = 'SUSPICIOUS_ACTIVITY',
-  RATE_LIMIT_EXCEEDED = 'RATE_LIMIT_EXCEEDED',
-  UNAUTHORIZED_ACCESS = 'UNAUTHORIZED_ACCESS',
-  DATA_EXPORT = 'DATA_EXPORT',
-  ADMIN_ACTION = 'ADMIN_ACTION',
-}
-
-interface SecuritySettings {
-  maxFailedAttempts: number;
-  lockoutDuration: number; // in minutes
-  sessionTimeout: number; // in minutes
-  requireMFA: boolean;
-  requireBiometric: boolean;
-  enableDeviceFingerprinting: boolean;
-  enableBehavioralAnalysis: boolean;
-  enableGeoFencing: boolean;
-  enableTimeRestrictions: boolean;
-  encryptionLevel: 'standard' | 'enhanced' | 'military';
-}
-
-interface FraudPattern {
-  type: 'LARGE_WITHDRAWAL' | 'MULTIPLE_FAILED_LOGINS' | 'UNUSUAL_LOCATION' | 'RAPID_TRANSACTIONS' | 'BEHAVIORAL_ANOMALY' | 'DEVICE_MISMATCH';
-  threshold: number;
-  timeWindow: number; // in minutes
-  riskScore: number;
-}
-
-// Rate limiting store
-const rateLimitStore = new Map<string, { count: number; resetTime: number }>();
-
-// Login attempts store
-const loginAttemptsStore = new Map<string, { attempts: number; lockoutUntil?: number }>();
-
 export class SecurityService {
-  private defaultSettings: SecuritySettings = {
-    maxFailedAttempts: 3,
-    lockoutDuration: 30,
-    sessionTimeout: 15,
-    requireMFA: true,
-    requireBiometric: false,
-    enableDeviceFingerprinting: true,
-    enableBehavioralAnalysis: true,
-    enableGeoFencing: false,
-    enableTimeRestrictions: false,
-    encryptionLevel: 'enhanced'
-  };
-
-  private fraudPatterns: FraudPattern[] = [
-    { type: 'LARGE_WITHDRAWAL', threshold: 50000, timeWindow: 60, riskScore: 0.7 },
-    { type: 'MULTIPLE_FAILED_LOGINS', threshold: 3, timeWindow: 15, riskScore: 0.8 },
-    { type: 'RAPID_TRANSACTIONS', threshold: 5, timeWindow: 10, riskScore: 0.6 },
-    { type: 'BEHAVIORAL_ANOMALY', threshold: 0.8, timeWindow: 30, riskScore: 0.9 },
-    { type: 'DEVICE_MISMATCH', threshold: 1, timeWindow: 60, riskScore: 0.7 }
-  ];
-
-  // Multi-factor Authentication
-  async verifyMFA(userId: string, accountNumber: string, pin: string): Promise<{ success: boolean; message: string }> {
+  // Multi-Factor Authentication
+  async setupMFA(userId: string, accountNumber: string, pin: string): Promise<{ success: boolean; message: string }> {
     try {
-      const { data: user, error } = await supabase
+      // Verify account number and PIN combination
+      const { data: userData } = await supabase
         .from('users')
-        .select('*')
+        .select('account_number, pin')
         .eq('id', userId)
-        .eq('account_number', accountNumber)
-        .eq('pin', pin)
         .single();
 
-      if (error || !user) {
-        await this.logSecurityEvent(userId, 'MFA_FAILED', 'Invalid account number or PIN');
-        return { success: false, message: 'Invalid credentials' };
+      if (!userData || userData.account_number !== accountNumber || userData.pin !== pin) {
+        return { success: false, message: 'Invalid account number or PIN' };
       }
 
-      if (user.is_locked) {
-        await this.logSecurityEvent(userId, 'MFA_BLOCKED', 'Account is locked');
+      // Log MFA setup
+      await this.logSecurityEvent(userId, 'MFA_SETUP', 'Multi-factor authentication enabled');
+      
+      return { success: true, message: 'MFA setup successful' };
+    } catch (error) {
+      console.error('MFA setup failed:', error);
+      return { success: false, message: 'MFA setup failed' };
+    }
+  }
+
+  async verifyMFA(userId: string, accountNumber: string, pin: string): Promise<{ success: boolean; message: string }> {
+    try {
+      const { data: userData } = await supabase
+        .from('users')
+        .select('account_number, pin, is_locked')
+        .eq('id', userId)
+        .single();
+
+      if (!userData) {
+        return { success: false, message: 'User not found' };
+      }
+
+      if (userData.is_locked) {
         return { success: false, message: 'Account is locked' };
+      }
+
+      if (userData.account_number !== accountNumber || userData.pin !== pin) {
+        await this.handleFailedAttempt(userId, 'MFA');
+        return { success: false, message: 'Invalid account number or PIN' };
       }
 
       await this.logSecurityEvent(userId, 'MFA_SUCCESS', 'Multi-factor authentication successful');
       return { success: true, message: 'MFA verification successful' };
     } catch (error) {
-      console.error('MFA verification error:', error);
+      console.error('MFA verification failed:', error);
       return { success: false, message: 'MFA verification failed' };
-    }
-  }
-
-  // Account Lockout Protection
-  async handleFailedAttempt(userId: string, attemptType: 'LOGIN' | 'PIN'): Promise<{ shouldLock: boolean; attemptsLeft: number }> {
-    try {
-      const { data: user, error } = await supabase
-        .from('users')
-        .select('failed_attempts, failed_password_attempts, is_locked')
-        .eq('id', userId)
-        .single();
-
-      if (error || !user) {
-        return { shouldLock: false, attemptsLeft: 0 };
-      }
-
-      const currentAttempts = attemptType === 'LOGIN' ? user.failed_password_attempts : user.failed_attempts;
-      const newAttempts = currentAttempts + 1;
-      const shouldLock = newAttempts >= this.defaultSettings.maxFailedAttempts;
-
-      const updateData: any = {
-        [attemptType === 'LOGIN' ? 'failed_password_attempts' : 'failed_attempts']: newAttempts,
-        [attemptType === 'LOGIN' ? 'last_password_attempt' : 'updated_at']: new Date().toISOString()
-      };
-
-      if (shouldLock) {
-        updateData.is_locked = true;
-        updateData.lock_reason = `Account locked due to ${newAttempts} failed ${attemptType.toLowerCase()} attempts`;
-        updateData.lock_date = new Date().toISOString();
-      }
-
-      await supabase
-        .from('users')
-        .update(updateData)
-        .eq('id', userId);
-
-      await this.logSecurityEvent(
-        userId, 
-        shouldLock ? 'ACCOUNT_LOCKED' : 'FAILED_ATTEMPT',
-        `${attemptType} attempt failed. ${shouldLock ? 'Account locked.' : `${this.defaultSettings.maxFailedAttempts - newAttempts} attempts remaining.`}`
-      );
-
-      return { 
-        shouldLock, 
-        attemptsLeft: Math.max(0, this.defaultSettings.maxFailedAttempts - newAttempts) 
-      };
-    } catch (error) {
-      console.error('Failed attempt handling error:', error);
-      return { shouldLock: false, attemptsLeft: 0 };
-    }
-  }
-
-  // Fraud Detection
-  async detectFraudulentActivity(userId: string, transactionType: string, amount: number): Promise<{ isSuspicious: boolean; reason?: string }> {
-    try {
-      // Check for large withdrawal pattern
-      if (transactionType === 'WITHDRAWAL' && amount > this.fraudPatterns[0].threshold) {
-        await this.logFraudAlert(userId, 'LARGE_WITHDRAWAL', `Large withdrawal of KES ${amount.toLocaleString()}`);
-        return { isSuspicious: true, reason: 'Large withdrawal amount detected' };
-      }
-
-      // Check for rapid transactions
-      const { data: recentTransactions } = await supabase
-        .from('transactions')
-        .select('*')
-        .eq('user_id', userId)
-        .gte('timestamp', new Date(Date.now() - 10 * 60 * 1000).toISOString()) // Last 10 minutes
-        .order('timestamp', { ascending: false });
-
-      if (recentTransactions && recentTransactions.length >= this.fraudPatterns[2].threshold) {
-        await this.logFraudAlert(userId, 'RAPID_TRANSACTIONS', `${recentTransactions.length} transactions in 10 minutes`);
-        return { isSuspicious: true, reason: 'Rapid transaction pattern detected' };
-      }
-
-      return { isSuspicious: false };
-    } catch (error) {
-      console.error('Fraud detection error:', error);
-      return { isSuspicious: false };
     }
   }
 
   // Session Management
   async createSecureSession(userId: string): Promise<{ sessionId: string; expiresAt: Date }> {
-    try {
-      const sessionId = this.generateSecureToken();
-      const expiresAt = new Date(Date.now() + this.defaultSettings.sessionTimeout * 60 * 1000);
+    const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const expiresAt = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes
 
+    try {
       await supabase
         .from('atm_sessions')
         .insert({
@@ -213,35 +75,37 @@ export class SecurityService {
       
       return { sessionId, expiresAt };
     } catch (error) {
-      console.error('Session creation error:', error);
+      console.error('Session creation failed:', error);
       throw new Error('Failed to create secure session');
     }
   }
 
   async validateSession(sessionId: string): Promise<{ isValid: boolean; userId?: string }> {
     try {
-      const { data: session, error } = await supabase
+      const { data: session } = await supabase
         .from('atm_sessions')
-        .select('*')
+        .select('user_id, start_time, is_active')
         .eq('session_id', sessionId)
         .eq('is_active', true)
         .single();
 
-      if (error || !session) {
+      if (!session) {
         return { isValid: false };
       }
 
-      const sessionAge = Date.now() - new Date(session.start_time).getTime();
-      const isExpired = sessionAge > this.defaultSettings.sessionTimeout * 60 * 1000;
+      // Check if session has expired (30 minutes)
+      const sessionStart = new Date(session.start_time);
+      const now = new Date();
+      const thirtyMinutes = 30 * 60 * 1000;
 
-      if (isExpired) {
+      if (now.getTime() - sessionStart.getTime() > thirtyMinutes) {
         await this.terminateSession(sessionId);
         return { isValid: false };
       }
 
       return { isValid: true, userId: session.user_id };
     } catch (error) {
-      console.error('Session validation error:', error);
+      console.error('Session validation failed:', error);
       return { isValid: false };
     }
   }
@@ -255,355 +119,259 @@ export class SecurityService {
           end_time: new Date().toISOString()
         })
         .eq('session_id', sessionId);
-
-      await this.logSecurityEvent(null, 'SESSION_TERMINATED', `Session terminated: ${sessionId}`);
     } catch (error) {
-      console.error('Session termination error:', error);
+      console.error('Session termination failed:', error);
     }
   }
 
-  // Data Encryption Utilities
-  async encryptSensitiveData(data: string, encryptionLevel: 'standard' | 'enhanced' | 'military' = 'enhanced'): Promise<string> {
+  // Fraud Detection
+  async detectFraudulentActivity(userId: string, transactionType: string, amount: number): Promise<{ isSuspicious: boolean; reason?: string }> {
     try {
-      const algorithm = encryptionLevel === 'military' ? 'AES-256-GCM' : 
-                       encryptionLevel === 'enhanced' ? 'AES-256-CBC' : 'AES-128-CBC';
-      
-      // In a real implementation, you would use a proper encryption library
-      // This is a simplified version for demonstration
-      const key = await this.getEncryptionKey(encryptionLevel);
-      const encrypted = btoa(data + key); // Simplified encryption
-      
-      return encrypted;
+      // Check for rapid transactions
+      const { data: recentTransactions } = await supabase
+        .from('transactions')
+        .select('*')
+        .eq('user_id', userId)
+        .gte('timestamp', new Date(Date.now() - 10 * 60 * 1000).toISOString()) // Last 10 minutes
+        .order('timestamp', { ascending: false });
+
+      if (recentTransactions && recentTransactions.length > 5) {
+        await this.createFraudAlert(userId, 'UNUSUAL_PATTERN', 'Multiple rapid transactions detected', 'HIGH');
+        return { isSuspicious: true, reason: 'Multiple rapid transactions detected' };
+      }
+
+      // Check for large withdrawal amounts
+      if (transactionType === 'WITHDRAWAL' && amount > 50000) {
+        await this.createFraudAlert(userId, 'SUSPICIOUS_AMOUNT', `Large withdrawal attempt: KES ${amount}`, 'MEDIUM');
+        return { isSuspicious: true, reason: 'Large withdrawal amount detected' };
+      }
+
+      // Check for unusual patterns
+      const { data: userTransactions } = await supabase
+        .from('transactions')
+        .select('amount, type')
+        .eq('user_id', userId)
+        .order('timestamp', { ascending: false })
+        .limit(10);
+
+      if (userTransactions && userTransactions.length > 0) {
+        const avgAmount = userTransactions.reduce((sum, t) => sum + Number(t.amount), 0) / userTransactions.length;
+        
+        if (amount > avgAmount * 5) {
+          await this.createFraudAlert(userId, 'UNUSUAL_PATTERN', `Transaction amount significantly higher than usual`, 'MEDIUM');
+          return { isSuspicious: true, reason: 'Transaction amount significantly higher than usual' };
+        }
+      }
+
+      return { isSuspicious: false };
     } catch (error) {
-      console.error('Encryption error:', error);
-      throw error;
+      console.error('Fraud detection failed:', error);
+      return { isSuspicious: false };
     }
   }
 
-  async decryptSensitiveData(encryptedData: string, encryptionLevel: 'standard' | 'enhanced' | 'military' = 'enhanced'): Promise<string> {
-    try {
-      const key = await this.getEncryptionKey(encryptionLevel);
-      const decrypted = atob(encryptedData).replace(key, ''); // Simplified decryption
-      
-      return decrypted;
-    } catch (error) {
-      console.error('Decryption error:', error);
-      throw error;
-    }
-  }
-
-  // PCI DSS Compliance Helpers
-  maskCardNumber(cardNumber: string): string {
-    if (cardNumber.length < 4) return cardNumber;
-    return '**** **** **** ' + cardNumber.slice(-4);
-  }
-
-  maskAccountNumber(accountNumber: string): string {
-    if (accountNumber.length < 4) return accountNumber;
-    return '*'.repeat(accountNumber.length - 4) + accountNumber.slice(-4);
-  }
-
-  validatePCICompliance(data: any): { isCompliant: boolean; violations: string[] } {
-    const violations: string[] = [];
-
-    // Check for exposed sensitive data
-    if (data.cardNumber && data.cardNumber.length > 4 && !data.cardNumber.includes('*')) {
-      violations.push('Card number not properly masked');
-    }
-
-    if (data.pin && data.pin.length > 0) {
-      violations.push('PIN should never be exposed in logs or responses');
-    }
-
-    if (data.cvv && data.cvv.length > 0) {
-      violations.push('CVV should never be stored or exposed');
-    }
-
-    return {
-      isCompliant: violations.length === 0,
-      violations
-    };
-  }
-
-  // Audit Logging
-  public async logSecurityEvent(userId: string | null, event: string, details: string): Promise<void> {
+  async createFraudAlert(userId: string, type: string, description: string, severity: 'LOW' | 'MEDIUM' | 'HIGH'): Promise<void> {
     try {
       await supabase
-        .from('audit_logs')
+        .from('fraud_alerts')
         .insert({
           user_id: userId,
-          action: event,
-          details: details,
-          timestamp: new Date().toISOString(),
-          ip_address: this.getCurrentIP(),
-          user_agent: navigator.userAgent
+          type,
+          description,
+          severity,
+          resolved: false
+        });
+
+      await this.logSecurityEvent(userId, 'FRAUD_ALERT', `${severity} fraud alert: ${description}`);
+    } catch (error) {
+      console.error('Failed to create fraud alert:', error);
+    }
+  }
+
+  // Failed Attempt Management
+  async handleFailedAttempt(userId: string, attemptType: 'LOGIN' | 'PIN' | 'MFA'): Promise<{ shouldLock: boolean; attemptsLeft: number }> {
+    try {
+      const { data: user } = await supabase
+        .from('users')
+        .select('failed_attempts, failed_password_attempts, is_locked')
+        .eq('id', userId)
+        .single();
+
+      if (!user) {
+        return { shouldLock: false, attemptsLeft: 0 };
+      }
+
+      const maxAttempts = attemptType === 'LOGIN' ? 5 : 3;
+      const currentAttempts = attemptType === 'LOGIN' ? user.failed_password_attempts : user.failed_attempts;
+      const newAttempts = currentAttempts + 1;
+
+      const updateData: any = {
+        [`failed_${attemptType === 'LOGIN' ? 'password_' : ''}attempts`]: newAttempts
+      };
+
+      if (newAttempts >= maxAttempts) {
+        updateData.is_locked = true;
+        updateData.lock_reason = `Account locked due to ${maxAttempts} failed ${attemptType.toLowerCase()} attempts`;
+        updateData.lock_date = new Date().toISOString();
+      }
+
+      await supabase
+        .from('users')
+        .update(updateData)
+        .eq('id', userId);
+
+      await this.logSecurityEvent(userId, 'FAILED_ATTEMPT', `Failed ${attemptType} attempt ${newAttempts}/${maxAttempts}`);
+
+      return {
+        shouldLock: newAttempts >= maxAttempts,
+        attemptsLeft: Math.max(0, maxAttempts - newAttempts)
+      };
+    } catch (error) {
+      console.error('Failed to handle failed attempt:', error);
+      return { shouldLock: false, attemptsLeft: 0 };
+    }
+  }
+
+  // Security Event Logging
+  async logSecurityEvent(userId: string, eventType: string, description: string, ipAddress?: string): Promise<void> {
+    try {
+      await supabase
+        .from('security_events')
+        .insert({
+          user_id: userId,
+          event_type: eventType,
+          description,
+          ip_address: ipAddress,
+          timestamp: new Date().toISOString()
         });
     } catch (error) {
       console.error('Failed to log security event:', error);
     }
   }
 
-  private getCurrentIP(): string {
-    // In a real implementation, this would get the actual IP
-    return '127.0.0.1';
+  // Encryption utilities
+  async encryptSensitiveData(data: string): Promise<string> {
+    // In production, use proper encryption
+    return btoa(data); // Simple base64 encoding for demo
   }
 
-  private async logFraudAlert(userId: string, type: string, description: string): Promise<void> {
+  async decryptSensitiveData(encryptedData: string): Promise<string> {
+    // In production, use proper decryption
+    return atob(encryptedData); // Simple base64 decoding for demo
+  }
+
+  // Biometric Authentication
+  async setupBiometric(userId: string, biometricType: 'fingerprint' | 'face' | 'voice', biometricData: string): Promise<{ success: boolean; message: string }> {
     try {
+      const encryptedBiometric = await this.encryptSensitiveData(biometricData);
+      
       await supabase
-        .from('fraud_alerts')
-        .insert({
+        .from('biometric_data')
+        .upsert({
           user_id: userId,
-          type: type as any,
-          description,
-          severity: 'HIGH',
-          timestamp: new Date().toISOString()
+          biometric_type: biometricType,
+          biometric_hash: encryptedBiometric,
+          is_enabled: true
         });
+
+      await this.logSecurityEvent(userId, 'BIOMETRIC_SETUP', `${biometricType} authentication enabled`);
+      
+      return { success: true, message: `${biometricType} authentication setup successful` };
     } catch (error) {
-      console.error('Fraud alert logging error:', error);
+      console.error('Biometric setup failed:', error);
+      return { success: false, message: 'Biometric setup failed' };
     }
   }
 
-  // Utility Methods
-  private generateSecureToken(): string {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-    let result = '';
-    for (let i = 0; i < 32; i++) {
-      result += chars.charAt(Math.floor(Math.random() * chars.length));
+  async verifyBiometric(userId: string, biometricType: 'fingerprint' | 'face' | 'voice', biometricData: string): Promise<{ success: boolean; message: string }> {
+    try {
+      const { data: biometric } = await supabase
+        .from('biometric_data')
+        .select('biometric_hash')
+        .eq('user_id', userId)
+        .eq('biometric_type', biometricType)
+        .eq('is_enabled', true)
+        .single();
+
+      if (!biometric) {
+        return { success: false, message: 'Biometric authentication not set up' };
+      }
+
+      const storedBiometric = await this.decryptSensitiveData(biometric.biometric_hash);
+      
+      // In production, use proper biometric matching algorithms
+      if (storedBiometric === biometricData) {
+        await this.logSecurityEvent(userId, 'BIOMETRIC_SUCCESS', `${biometricType} authentication successful`);
+        return { success: true, message: 'Biometric verification successful' };
+      } else {
+        await this.logSecurityEvent(userId, 'BIOMETRIC_FAILED', `${biometricType} authentication failed`);
+        return { success: false, message: 'Biometric verification failed' };
+      }
+    } catch (error) {
+      console.error('Biometric verification failed:', error);
+      return { success: false, message: 'Biometric verification failed' };
     }
-    return result;
   }
 
-  // Account Unlock (Admin only)
-  async unlockAccount(userId: string, adminId: string): Promise<{ success: boolean; message: string }> {
+  // Device Fingerprinting
+  async createDeviceFingerprint(userId: string, deviceInfo: any): Promise<string> {
+    const fingerprint = btoa(JSON.stringify(deviceInfo));
+    
     try {
       await supabase
-        .from('users')
-        .update({
-          is_locked: false,
-          failed_attempts: 0,
-          failed_password_attempts: 0,
-          lock_reason: null,
-          lock_date: null
-        })
-        .eq('id', userId);
-
-      await supabase
-        .from('admin_actions')
-        .insert({
-          admin_id: adminId,
-          action: 'UNLOCK_ACCOUNT',
-          target_user_id: userId,
-          details: 'Account unlocked by administrator'
+        .from('device_fingerprints')
+        .upsert({
+          user_id: userId,
+          fingerprint,
+          user_agent: deviceInfo.userAgent,
+          screen_resolution: deviceInfo.screenResolution,
+          timezone: deviceInfo.timezone,
+          language: deviceInfo.language,
+          platform: deviceInfo.platform,
+          is_trusted: false
         });
 
-      await this.logSecurityEvent(userId, 'ACCOUNT_UNLOCKED', `Account unlocked by admin: ${adminId}`);
-
-      return { success: true, message: 'Account unlocked successfully' };
+      return fingerprint;
     } catch (error) {
-      console.error('Account unlock error:', error);
-      return { success: false, message: 'Failed to unlock account' };
+      console.error('Device fingerprint creation failed:', error);
+      throw error;
     }
   }
 
-  // Password validation
-  validatePassword(password: string): { isValid: boolean; errors: string[] } {
-    const errors: string[] = [];
+  async validateDeviceFingerprint(userId: string, currentFingerprint: string): Promise<{ isTrusted: boolean; riskScore: number }> {
+    try {
+      const { data: device } = await supabase
+        .from('device_fingerprints')
+        .select('is_trusted, created_at')
+        .eq('user_id', userId)
+        .eq('fingerprint', currentFingerprint)
+        .single();
 
-    if (password.length < SECURITY_CONFIG.PASSWORD_MIN_LENGTH) {
-      errors.push(`Password must be at least ${SECURITY_CONFIG.PASSWORD_MIN_LENGTH} characters long`);
+      if (!device) {
+        return { isTrusted: false, riskScore: 0.8 };
+      }
+
+      // Device is trusted if it's been used before and marked as trusted
+      if (device.is_trusted) {
+        return { isTrusted: true, riskScore: 0.1 };
+      }
+
+      // Calculate risk score based on device age
+      const deviceAge = Date.now() - new Date(device.created_at).getTime();
+      const daysSinceFirst = deviceAge / (1000 * 60 * 60 * 24);
+      
+      let riskScore = 0.5;
+      if (daysSinceFirst > 7) riskScore = 0.3;
+      if (daysSinceFirst > 30) riskScore = 0.2;
+
+      return { isTrusted: daysSinceFirst > 7, riskScore };
+    } catch (error) {
+      console.error('Device fingerprint validation failed:', error);
+      return { isTrusted: false, riskScore: 0.9 };
     }
-
-    if (SECURITY_CONFIG.PASSWORD_REQUIRE_UPPERCASE && !/[A-Z]/.test(password)) {
-      errors.push('Password must contain at least one uppercase letter');
-    }
-
-    if (SECURITY_CONFIG.PASSWORD_REQUIRE_LOWERCASE && !/[a-z]/.test(password)) {
-      errors.push('Password must contain at least one lowercase letter');
-    }
-
-    if (SECURITY_CONFIG.PASSWORD_REQUIRE_NUMBERS && !/\d/.test(password)) {
-      errors.push('Password must contain at least one number');
-    }
-
-    if (SECURITY_CONFIG.PASSWORD_REQUIRE_SPECIAL_CHARS && !/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
-      errors.push('Password must contain at least one special character');
-    }
-
-    return {
-      isValid: errors.length === 0,
-      errors,
-    };
   }
 
-  // Input sanitization
-  sanitizeInput(input: string): string {
-    return input
-      .trim()
-      .replace(/[<>]/g, '') // Remove potential HTML tags
-      .substring(0, SECURITY_CONFIG.MAX_INPUT_LENGTH);
-  }
-
-  // XSS prevention
-  escapeHtml(text: string): string {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-  }
-
-  // SQL injection prevention (for dynamic queries)
-  escapeSqlIdentifier(identifier: string): string {
-    return identifier.replace(/[^a-zA-Z0-9_]/g, '');
-  }
-
-  // Rate limiting
-  checkRateLimit(identifier: string): { allowed: boolean; remaining: number; resetTime: number } {
-    const now = Date.now();
-    const record = rateLimitStore.get(identifier);
-
-    if (!record || now > record.resetTime) {
-      // Reset or create new record
-      rateLimitStore.set(identifier, {
-        count: 1,
-        resetTime: now + SECURITY_CONFIG.RATE_LIMIT_WINDOW,
-      });
-      return {
-        allowed: true,
-        remaining: SECURITY_CONFIG.MAX_REQUESTS_PER_WINDOW - 1,
-        resetTime: now + SECURITY_CONFIG.RATE_LIMIT_WINDOW,
-      };
-    }
-
-    if (record.count >= SECURITY_CONFIG.MAX_REQUESTS_PER_WINDOW) {
-      return {
-        allowed: false,
-        remaining: 0,
-        resetTime: record.resetTime,
-      };
-    }
-
-    record.count++;
-    return {
-      allowed: true,
-      remaining: SECURITY_CONFIG.MAX_REQUESTS_PER_WINDOW - record.count,
-      resetTime: record.resetTime,
-    };
-  }
-
-  // Login attempt tracking
-  checkLoginAttempts(email: string): { allowed: boolean; remainingAttempts: number; lockoutUntil?: number } {
-    const record = loginAttemptsStore.get(email);
-    const now = Date.now();
-
-    if (!record) {
-      return { allowed: true, remainingAttempts: SECURITY_CONFIG.MAX_LOGIN_ATTEMPTS };
-    }
-
-    if (record.lockoutUntil && now < record.lockoutUntil) {
-      return {
-        allowed: false,
-        remainingAttempts: 0,
-        lockoutUntil: record.lockoutUntil,
-      };
-    }
-
-    if (record.lockoutUntil && now >= record.lockoutUntil) {
-      // Reset lockout
-      loginAttemptsStore.set(email, { attempts: 0 });
-      return { allowed: true, remainingAttempts: SECURITY_CONFIG.MAX_LOGIN_ATTEMPTS };
-    }
-
-    return {
-      allowed: record.attempts < SECURITY_CONFIG.MAX_LOGIN_ATTEMPTS,
-      remainingAttempts: Math.max(0, SECURITY_CONFIG.MAX_LOGIN_ATTEMPTS - record.attempts),
-    };
-  }
-
-  // Record failed login attempt
-  recordFailedLogin(email: string): void {
-    const record = loginAttemptsStore.get(email) || { attempts: 0 };
-    record.attempts++;
-
-    if (record.attempts >= SECURITY_CONFIG.MAX_LOGIN_ATTEMPTS) {
-      record.lockoutUntil = Date.now() + SECURITY_CONFIG.LOCKOUT_DURATION;
-    }
-
-    loginAttemptsStore.set(email, record);
-  }
-
-  // Reset login attempts
-  resetLoginAttempts(email: string): void {
-    loginAttemptsStore.delete(email);
-  }
-
-  // File upload validation
-  validateFileUpload(file: File): { isValid: boolean; errors: string[] } {
-    const errors: string[] = [];
-
-    if (!SECURITY_CONFIG.ALLOWED_FILE_TYPES.includes(file.type)) {
-      errors.push('File type not allowed');
-    }
-
-    if (file.size > SECURITY_CONFIG.MAX_FILE_SIZE) {
-      errors.push(`File size must be less than ${SECURITY_CONFIG.MAX_FILE_SIZE / (1024 * 1024)}MB`);
-    }
-
-    return {
-      isValid: errors.length === 0,
-      errors,
-    };
-  }
-
-  // Hash sensitive data (for client-side storage)
-  async hashData(data: string): Promise<string> {
-    const encoder = new TextEncoder();
-    const dataBuffer = encoder.encode(data);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', dataBuffer);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map(byte => byte.toString(16).padStart(2, '0')).join('');
-  }
-
-  // Security health check
-  async performSecurityHealthCheck(): Promise<{
-    status: 'healthy' | 'warning' | 'critical';
-    issues: string[];
-    recommendations: string[];
-  }> {
-    const issues: string[] = [];
-    const recommendations: string[] = [];
-
-    // Check if HTTPS is being used
-    if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
-      issues.push('Not using HTTPS');
-      recommendations.push('Enable HTTPS for all connections');
-    }
-
-    // Check for secure headers (basic check)
-    if (!window.location.href.includes('localhost')) {
-      recommendations.push('Implement security headers (HSTS, CSP, etc.)');
-    }
-
-    // Check session timeout
-    if (SECURITY_CONFIG.SESSION_TIMEOUT > 60 * 60 * 1000) {
-      issues.push('Session timeout is too long');
-      recommendations.push('Reduce session timeout to 30 minutes or less');
-    }
-
-    // Check password requirements
-    if (!SECURITY_CONFIG.PASSWORD_REQUIRE_SPECIAL_CHARS) {
-      recommendations.push('Enable special character requirement for passwords');
-    }
-
-    const status = issues.length === 0 ? 'healthy' : issues.length <= 2 ? 'warning' : 'critical';
-
-    return {
-      status,
-      issues,
-      recommendations,
-    };
-  }
-
-  // Enhanced Security Health Check
+  // Advanced Security Health Check
   async performAdvancedSecurityHealthCheck(): Promise<{
     status: 'healthy' | 'warning' | 'critical';
     issues: string[];
@@ -616,32 +384,60 @@ export class SecurityService {
     };
   }> {
     try {
-      const issues: string[] = [];
-      const recommendations: string[] = [];
-      let status: 'healthy' | 'warning' | 'critical' = 'healthy';
+      // Get security metrics
+      const { data: fraudAlerts } = await supabase
+        .from('fraud_alerts')
+        .select('severity')
+        .eq('resolved', false);
 
-      // Check for locked accounts
-      const { data: lockedAccounts } = await supabase
-        .from('users')
-        .select('*')
-        .eq('is_locked', true);
-
-      if (lockedAccounts && lockedAccounts.length > 5) {
-        issues.push('Multiple accounts are locked');
-        status = status === 'healthy' ? 'warning' : status;
-        recommendations.push('Review account lockout policies');
-      }
-
-      // Calculate metrics
-      const totalThreats = 0; // Mock since we don't have threat detection table
-      const averageRiskScore = 0; // Mock
-      const securityEvents = 0; // Mock
+      const { data: securityEvents } = await supabase
+        .from('security_events')
+        .select('event_type')
+        .gte('timestamp', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
 
       const { data: activeSessions } = await supabase
         .from('atm_sessions')
-        .select('*')
+        .select('session_id')
         .eq('is_active', true);
+
+      const totalThreats = fraudAlerts?.length || 0;
+      const securityEventsCount = securityEvents?.length || 0;
       const activeSessionsCount = activeSessions?.length || 0;
+
+      // Calculate average risk score
+      const highRiskAlerts = fraudAlerts?.filter(alert => alert.severity === 'HIGH').length || 0;
+      const mediumRiskAlerts = fraudAlerts?.filter(alert => alert.severity === 'MEDIUM').length || 0;
+      const averageRiskScore = totalThreats > 0 ? 
+        ((highRiskAlerts * 0.9) + (mediumRiskAlerts * 0.6)) / totalThreats : 0;
+
+      // Determine status and issues
+      let status: 'healthy' | 'warning' | 'critical' = 'healthy';
+      const issues: string[] = [];
+      const recommendations: string[] = [];
+
+      if (highRiskAlerts > 0) {
+        status = 'critical';
+        issues.push(`${highRiskAlerts} high-risk fraud alerts detected`);
+        recommendations.push('Review and resolve high-risk fraud alerts immediately');
+      }
+
+      if (mediumRiskAlerts > 3) {
+        status = status === 'critical' ? 'critical' : 'warning';
+        issues.push(`${mediumRiskAlerts} medium-risk fraud alerts detected`);
+        recommendations.push('Investigate medium-risk fraud alerts');
+      }
+
+      if (securityEventsCount > 100) {
+        status = status === 'critical' ? 'critical' : 'warning';
+        issues.push('High number of security events in the last 24 hours');
+        recommendations.push('Review security event logs for patterns');
+      }
+
+      if (activeSessionsCount > 50) {
+        status = status === 'critical' ? 'critical' : 'warning';
+        issues.push('High number of active sessions');
+        recommendations.push('Monitor active sessions for anomalies');
+      }
 
       return {
         status,
@@ -650,210 +446,267 @@ export class SecurityService {
         metrics: {
           totalThreats,
           averageRiskScore,
-          securityEvents,
+          securityEvents: securityEventsCount,
           activeSessions: activeSessionsCount
         }
       };
     } catch (error) {
-      console.error('Advanced security health check error:', error);
+      console.error('Security health check failed:', error);
       return {
         status: 'critical',
         issues: ['Security health check failed'],
-        recommendations: ['Investigate system security status'],
-        metrics: { totalThreats: 0, averageRiskScore: 0, securityEvents: 0, activeSessions: 0 }
+        recommendations: ['Check system connectivity and database access'],
+        metrics: {
+          totalThreats: 0,
+          averageRiskScore: 0,
+          securityEvents: 0,
+          activeSessions: 0
+        }
       };
     }
   }
 
-  // Biometric Authentication (Mock implementations)
-  async setupBiometric(userId: string, biometricType: 'fingerprint' | 'face' | 'voice', biometricData: string): Promise<{ success: boolean; message: string }> {
+  // Behavioral Analysis
+  async recordBehavioralPattern(userId: string, pattern: {
+    typingPattern: number[];
+    mousePattern: number[];
+    sessionDuration: number;
+    actionsPerMinute: number;
+  }): Promise<void> {
     try {
-      // Mock implementation - log the action
-      await this.logSecurityEvent(userId, 'BIOMETRIC_SETUP', `Biometric ${biometricType} setup attempted`);
-      return { success: true, message: 'Biometric authentication setup successful' };
+      await supabase
+        .from('behavioral_patterns')
+        .upsert({
+          user_id: userId,
+          typing_pattern: pattern.typingPattern,
+          mouse_pattern: pattern.mousePattern,
+          session_duration: pattern.sessionDuration,
+          actions_per_minute: pattern.actionsPerMinute,
+          last_updated: new Date().toISOString()
+        });
     } catch (error) {
-      console.error('Biometric setup error:', error);
-      return { success: false, message: 'Biometric setup failed' };
-    }
-  }
-
-  async verifyBiometric(userId: string, biometricType: 'fingerprint' | 'face' | 'voice', biometricData: string): Promise<{ success: boolean; message: string }> {
-    try {
-      // Mock implementation - simulate verification
-      await this.logSecurityEvent(userId, 'BIOMETRIC_VERIFY', `Biometric ${biometricType} verification attempted`);
-      return { success: true, message: 'Biometric verification successful' };
-    } catch (error) {
-      console.error('Biometric verification error:', error);
-      return { success: false, message: 'Biometric verification failed' };
-    }
-  }
-
-  // Device Fingerprinting (Mock implementations)
-  async createDeviceFingerprint(userId: string, deviceInfo: any): Promise<string> {
-    try {
-      const fingerprint = await this.generateDeviceFingerprint(deviceInfo);
-      await this.logSecurityEvent(userId, 'DEVICE_FINGERPRINT', 'Device fingerprint created');
-      return fingerprint;
-    } catch (error) {
-      console.error('Device fingerprint creation error:', error);
-      throw error;
-    }
-  }
-
-  async validateDeviceFingerprint(userId: string, currentFingerprint: string): Promise<{ isTrusted: boolean; riskScore: number }> {
-    try {
-      // Mock implementation
-      await this.logSecurityEvent(userId, 'DEVICE_VALIDATE', 'Device fingerprint validated');
-      return { isTrusted: true, riskScore: 0.1 };
-    } catch (error) {
-      console.error('Device fingerprint validation error:', error);
-      return { isTrusted: false, riskScore: 0.9 };
-    }
-  }
-
-  // Behavioral Analysis (Mock implementations)
-  async recordBehavioralPattern(userId: string, pattern: any): Promise<void> {
-    try {
-      await this.logSecurityEvent(userId, 'BEHAVIORAL_RECORD', 'Behavioral pattern recorded');
-    } catch (error) {
-      console.error('Behavioral pattern recording error:', error);
+      console.error('Failed to record behavioral pattern:', error);
     }
   }
 
   async analyzeBehavioralAnomaly(userId: string, currentPattern: any): Promise<{ isAnomaly: boolean; confidence: number }> {
     try {
-      await this.logSecurityEvent(userId, 'BEHAVIORAL_ANALYZE', 'Behavioral analysis performed');
-      return { isAnomaly: false, confidence: 0.1 };
+      const { data: storedPattern } = await supabase
+        .from('behavioral_patterns')
+        .select('*')
+        .eq('user_id', userId)
+        .single();
+
+      if (!storedPattern) {
+        return { isAnomaly: false, confidence: 0 };
+      }
+
+      // Simple anomaly detection based on session duration and actions per minute
+      const durationDiff = Math.abs(currentPattern.sessionDuration - storedPattern.session_duration);
+      const actionsDiff = Math.abs(currentPattern.actionsPerMinute - storedPattern.actions_per_minute);
+
+      const durationThreshold = storedPattern.session_duration * 0.5;
+      const actionsThreshold = storedPattern.actions_per_minute * 0.5;
+
+      const isAnomaly = durationDiff > durationThreshold || actionsDiff > actionsThreshold;
+      const confidence = Math.min((durationDiff / durationThreshold + actionsDiff / actionsThreshold) / 2, 1);
+
+      if (isAnomaly) {
+        await this.logSecurityEvent(userId, 'BEHAVIORAL_ANOMALY', `Behavioral anomaly detected with confidence: ${confidence.toFixed(2)}`);
+      }
+
+      return { isAnomaly, confidence };
     } catch (error) {
-      console.error('Behavioral analysis error:', error);
+      console.error('Behavioral analysis failed:', error);
       return { isAnomaly: false, confidence: 0 };
     }
   }
 
-  // Geo-fencing (Mock implementations)
+  // Geo-fencing
   async setupGeoFencing(userId: string, allowedLocations: Array<{ lat: number; lng: number; radius: number }>): Promise<{ success: boolean; message: string }> {
     try {
-      await this.logSecurityEvent(userId, 'GEO_SETUP', 'Geo-fencing setup completed');
+      await supabase
+        .from('geo_fencing')
+        .upsert({
+          user_id: userId,
+          allowed_locations: allowedLocations,
+          is_enabled: true,
+          updated_at: new Date().toISOString()
+        });
+
+      await this.logSecurityEvent(userId, 'GEO_FENCING_SETUP', `Geo-fencing enabled with ${allowedLocations.length} locations`);
+      
       return { success: true, message: 'Geo-fencing setup successful' };
     } catch (error) {
-      console.error('Geo-fencing setup error:', error);
+      console.error('Geo-fencing setup failed:', error);
       return { success: false, message: 'Geo-fencing setup failed' };
     }
   }
 
   async validateGeoLocation(userId: string, currentLocation: { lat: number; lng: number }): Promise<{ isAllowed: boolean; distance: number }> {
     try {
-      await this.logSecurityEvent(userId, 'GEO_VALIDATE', 'Geo-location validated');
-      return { isAllowed: true, distance: 0 };
+      const { data: geoFencing } = await supabase
+        .from('geo_fencing')
+        .select('allowed_locations, is_enabled')
+        .eq('user_id', userId)
+        .single();
+
+      if (!geoFencing || !geoFencing.is_enabled) {
+        return { isAllowed: true, distance: 0 };
+      }
+
+      const allowedLocations = geoFencing.allowed_locations as Array<{ lat: number; lng: number; radius: number }>;
+      
+      for (const location of allowedLocations) {
+        const distance = this.calculateDistance(currentLocation, location);
+        if (distance <= location.radius) {
+          return { isAllowed: true, distance };
+        }
+      }
+
+      // Find minimum distance to any allowed location
+      const minDistance = Math.min(...allowedLocations.map(loc => 
+        this.calculateDistance(currentLocation, loc)
+      ));
+
+      await this.logSecurityEvent(userId, 'GEO_VIOLATION', `Location access from unauthorized area. Distance: ${minDistance.toFixed(2)}km`);
+      
+      return { isAllowed: false, distance: minDistance };
     } catch (error) {
-      console.error('Geo-location validation error:', error);
-      return { isAllowed: false, distance: Infinity };
+      console.error('Geo-location validation failed:', error);
+      return { isAllowed: true, distance: 0 };
     }
   }
 
-  // Time-based Restrictions (Mock implementations)
+  private calculateDistance(point1: { lat: number; lng: number }, point2: { lat: number; lng: number }): number {
+    const R = 6371; // Earth's radius in kilometers
+    const dLat = this.toRadians(point2.lat - point1.lat);
+    const dLng = this.toRadians(point2.lng - point1.lng);
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(this.toRadians(point1.lat)) * Math.cos(this.toRadians(point2.lat)) *
+      Math.sin(dLng / 2) * Math.sin(dLng / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  }
+
+  private toRadians(degrees: number): number {
+    return degrees * (Math.PI / 180);
+  }
+
+  // Time Restrictions
   async setupTimeRestrictions(userId: string, restrictions: Array<{ day: number; startHour: number; endHour: number }>): Promise<{ success: boolean; message: string }> {
     try {
-      await this.logSecurityEvent(userId, 'TIME_SETUP', 'Time restrictions setup completed');
+      await supabase
+        .from('time_restrictions')
+        .upsert({
+          user_id: userId,
+          restrictions: restrictions,
+          is_enabled: true,
+          updated_at: new Date().toISOString()
+        });
+
+      await this.logSecurityEvent(userId, 'TIME_RESTRICTIONS_SETUP', `Time restrictions enabled with ${restrictions.length} rules`);
+      
       return { success: true, message: 'Time restrictions setup successful' };
     } catch (error) {
-      console.error('Time restrictions setup error:', error);
+      console.error('Time restrictions setup failed:', error);
       return { success: false, message: 'Time restrictions setup failed' };
     }
   }
 
   async validateTimeRestrictions(userId: string): Promise<{ isAllowed: boolean; reason?: string }> {
     try {
-      await this.logSecurityEvent(userId, 'TIME_VALIDATE', 'Time restrictions validated');
-      return { isAllowed: true };
+      const { data: timeRestrictions } = await supabase
+        .from('time_restrictions')
+        .select('restrictions, is_enabled')
+        .eq('user_id', userId)
+        .single();
+
+      if (!timeRestrictions || !timeRestrictions.is_enabled) {
+        return { isAllowed: true };
+      }
+
+      const now = new Date();
+      const currentDay = now.getDay(); // 0 = Sunday, 1 = Monday, ...
+      const currentHour = now.getHours();
+
+      const restrictions = timeRestrictions.restrictions as Array<{ day: number; startHour: number; endHour: number }>;
+      
+      for (const restriction of restrictions) {
+        if (restriction.day === currentDay) {
+          if (currentHour >= restriction.startHour && currentHour <= restriction.endHour) {
+            return { isAllowed: true };
+          }
+        }
+      }
+
+      await this.logSecurityEvent(userId, 'TIME_RESTRICTION_VIOLATION', `Access attempt outside allowed hours`);
+      
+      return { 
+        isAllowed: false, 
+        reason: `Access not allowed at this time. Current time: ${currentHour}:00` 
+      };
     } catch (error) {
-      console.error('Time restrictions validation error:', error);
-      return { isAllowed: false, reason: 'Time validation failed' };
+      console.error('Time restrictions validation failed:', error);
+      return { isAllowed: true };
     }
   }
 
-  // Real-time Threat Detection (Mock implementation)
+  // Real-time Threat Detection
   async detectRealTimeThreats(userId: string, action: string, context: any): Promise<{ threats: string[]; riskScore: number; recommendations: string[] }> {
+    const threats: string[] = [];
+    const recommendations: string[] = [];
+    let riskScore = 0;
+
     try {
-      await this.logSecurityEvent(userId, 'THREAT_DETECT', `Threat detection for action: ${action}`);
-      return { threats: [], riskScore: 0.1, recommendations: [] };
+      // Check for rapid successive actions
+      if (context.rapidActions && context.rapidActions > 10) {
+        threats.push('Rapid successive actions detected');
+        recommendations.push('Implement rate limiting');
+        riskScore += 0.3;
+      }
+
+      // Check for unusual IP address
+      if (context.ipAddress && context.ipAddress !== context.lastKnownIp) {
+        threats.push('Access from new IP address');
+        recommendations.push('Verify user identity');
+        riskScore += 0.2;
+      }
+
+      // Check for unusual user agent
+      if (context.userAgent && context.userAgent !== context.lastKnownUserAgent) {
+        threats.push('Access from new device/browser');
+        recommendations.push('Device verification required');
+        riskScore += 0.2;
+      }
+
+      // Check for suspicious transaction patterns
+      if (action === 'TRANSACTION' && context.amount > context.averageTransaction * 3) {
+        threats.push('Transaction amount significantly higher than usual');
+        recommendations.push('Additional verification required');
+        riskScore += 0.4;
+      }
+
+      // Cap risk score at 1.0
+      riskScore = Math.min(riskScore, 1.0);
+
+      // Log threats if any detected
+      if (threats.length > 0) {
+        await this.logSecurityEvent(userId, 'REAL_TIME_THREAT', `Threats detected: ${threats.join(', ')}. Risk score: ${riskScore}`);
+      }
+
+      return { threats, riskScore, recommendations };
     } catch (error) {
-      console.error('Real-time threat detection error:', error);
+      console.error('Real-time threat detection failed:', error);
       return { threats: [], riskScore: 0, recommendations: [] };
     }
   }
 
-  // Helper methods
-  private async generateDeviceFingerprint(deviceInfo: any): Promise<string> {
-    const fingerprintData = [
-      deviceInfo.userAgent,
-      deviceInfo.screenResolution,
-      deviceInfo.timezone,
-      deviceInfo.language,
-      deviceInfo.platform
-    ].join('|');
-    
-    return await this.hashData(fingerprintData);
-  }
-
-  private async getEncryptionKey(level: 'standard' | 'enhanced' | 'military'): Promise<string> {
-    // In a real implementation, this would fetch from a secure key management system
-    const keys = {
-      standard: 'standard-key-128',
-      enhanced: 'enhanced-key-256',
-      military: 'military-key-256-gcm'
-    };
-    return keys[level];
+  // Card number masking utility
+  maskCardNumber(cardNumber: string): string {
+    if (!cardNumber || cardNumber.length < 16) return cardNumber;
+    return cardNumber.slice(0, 4) + '****' + '****' + cardNumber.slice(-4);
   }
 }
 
 export const securityService = new SecurityService();
-
-// Security middleware for API calls
-export const withSecurity = <T extends (...args: any[]) => any>(
-  fn: T,
-  options: {
-    requireAuth?: boolean;
-    rateLimit?: boolean;
-    validateInput?: boolean;
-    logEvent?: boolean;
-    eventType?: SecurityEventType;
-  } = {}
-): T => {
-  return ((...args: any[]) => {
-    const {
-      requireAuth = true,
-      rateLimit = true,
-      validateInput = true,
-      logEvent = false,
-      eventType = SecurityEventType.ADMIN_ACTION,
-    } = options;
-
-    // Rate limiting
-    if (rateLimit) {
-      const rateLimitResult = securityService.checkRateLimit('api_call');
-      if (!rateLimitResult.allowed) {
-        throw new Error('Rate limit exceeded');
-      }
-    }
-
-    // Input validation
-    if (validateInput) {
-      args.forEach((arg, index) => {
-        if (typeof arg === 'string') {
-          args[index] = securityService.sanitizeInput(arg);
-        }
-      });
-    }
-
-    // Execute function
-    const result = fn(...args);
-
-    // Log event
-    if (logEvent) {
-      securityService.logSecurityEvent(null, eventType, `Function ${fn.name} executed`);
-    }
-
-    return result;
-  }) as T;
-};

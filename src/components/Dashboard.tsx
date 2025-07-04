@@ -3,6 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSupabaseATM } from '../contexts/SupabaseATMContext';
 import { useEnhancedTheme } from '../contexts/EnhancedThemeContext';
+import { SecurityProvider } from '../contexts/SecurityContext';
+import { realTimeService } from '../services/realTimeService';
 import EnhancedSidebar from './dashboard/EnhancedSidebar';
 import EnhancedTopNavBar from './dashboard/EnhancedTopNavBar';
 import OverviewScreen from './dashboard/OverviewScreen';
@@ -15,10 +17,19 @@ import SystemMetricsScreen from './dashboard/SystemMetricsScreen';
 import AdvancedSecurityDashboard from './dashboard/AdvancedSecurityDashboard';
 import AccessibilitySettings from './accessibility/AccessibilitySettings';
 import SecuritySettings from './accessibility/SecuritySettings';
+import NotificationBell from './notifications/NotificationBell';
+import PresenceIndicator from './presence/PresenceIndicator';
+import VoiceCommands from './advanced/VoiceCommands';
+import BiometricAuth from './advanced/BiometricAuth';
+import QRPayment from './advanced/QRPayment';
 
 const Dashboard: React.FC = () => {
   const [activeScreen, setActiveScreen] = useState('overview');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [showBiometric, setShowBiometric] = useState(false);
+  const [showQRCode, setShowQRCode] = useState(false);
+  const [qrMode, setQrMode] = useState<'generate' | 'scan'>('scan');
+  const [voiceEnabled, setVoiceEnabled] = useState(true);
   const { currentUser, logout } = useSupabaseATM();
   const { isDarkMode, toggleDarkMode } = useEnhancedTheme();
 
@@ -103,10 +114,30 @@ const Dashboard: React.FC = () => {
 
   useEffect(() => {
     console.log('Dashboard mounted');
+    
+    // Initialize real-time services
+    if (currentUser) {
+      // Subscribe to transaction updates
+      realTimeService.subscribeToTransactionUpdates(currentUser.id, (data) => {
+        console.log('Transaction update:', data);
+      });
+      
+      // Subscribe to security events
+      realTimeService.subscribeToSecurityEvents(currentUser.id, (event) => {
+        console.log('Security event:', event);
+      });
+      
+      // Subscribe to fraud alerts
+      realTimeService.subscribeToFraudAlerts(currentUser.id, (alert) => {
+        console.log('Fraud alert:', alert);
+      });
+    }
+    
     return () => {
       console.log('Dashboard unmounted');
+      realTimeService.unsubscribeFromAll();
     };
-  }, []);
+  }, [currentUser]);
 
   const handleLogout = async () => {
     try {
@@ -114,6 +145,40 @@ const Dashboard: React.FC = () => {
       console.log('Logout successful');
     } catch (error) {
       console.error('Logout failed:', error);
+    }
+  };
+
+  const handleVoiceCommand = (command: string, params?: any) => {
+    console.log('Voice command:', command, params);
+    
+    switch (command) {
+      case 'BALANCE_INQUIRY':
+        setActiveScreen('overview');
+        break;
+      case 'SEND_MONEY':
+        setActiveScreen('transactions');
+        break;
+      case 'WITHDRAWAL':
+      case 'DEPOSIT':
+        setActiveScreen('transactions');
+        break;
+      case 'VIEW_BILLS':
+        setActiveScreen('bills');
+        break;
+      case 'VIEW_LOANS':
+        setActiveScreen('loans');
+        break;
+      case 'VIEW_TRANSACTIONS':
+        setActiveScreen('transactions');
+        break;
+      case 'VIEW_SETTINGS':
+        setActiveScreen('settings');
+        break;
+      case 'LOGOUT':
+        handleLogout();
+        break;
+      default:
+        console.log('Unknown voice command:', command);
     }
   };
 
@@ -211,56 +276,164 @@ const Dashboard: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground transition-all duration-300">
-      {/* Mobile Sidebar Overlay */}
-      <AnimatePresence>
-        {isSidebarOpen && (
+    <SecurityProvider>
+      <div className="min-h-screen bg-[#0E0E0E] text-[#F1F1F1] transition-all duration-300">
+        {/* Mobile Sidebar Overlay */}
+        <AnimatePresence>
+          {isSidebarOpen && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+              onClick={() => setIsSidebarOpen(false)}
+            />
+          )}
+        </AnimatePresence>
+
+        <div className="flex min-h-screen w-full">
+          {/* Sidebar */}
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 z-40 lg:hidden"
-            onClick={() => setIsSidebarOpen(false)}
-          />
-        )}
-      </AnimatePresence>
+            className={`${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 fixed lg:static inset-y-0 left-0 z-50 lg:z-auto transition-transform duration-300`}
+          >
+            <EnhancedSidebar
+              activeTab={activeScreen}
+              setActiveTab={setActiveScreen}
+              onLogout={logout}
+              isCollapsed={false}
+              onToggleCollapse={() => {}}
+            />
+          </motion.div>
 
-      <div className="flex min-h-screen w-full">
-        {/* Sidebar */}
-        <motion.div
-          className={`${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 fixed lg:static inset-y-0 left-0 z-50 lg:z-auto transition-transform duration-300`}
-        >
-          <EnhancedSidebar
-            activeTab={activeScreen}
-            setActiveTab={setActiveScreen}
-            onLogout={logout}
-            isCollapsed={false}
-            onToggleCollapse={() => {}}
-          />
-        </motion.div>
+          {/* Main Content */}
+          <div className="flex-1 flex flex-col min-w-0">
+            {/* Top Navigation */}
+            <div className="bg-gray-800/80 backdrop-blur-md border-b border-gray-700/50 sticky top-0 z-50">
+              <div className="flex items-center justify-between h-16 px-4 lg:px-6">
+                {/* Left Side */}
+                <div className="flex items-center gap-4">
+                  {/* Mobile Menu Toggle */}
+                  <button
+                    onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                    className="lg:hidden p-2 rounded-md hover:bg-gray-700/50 text-gray-300"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
+                  </button>
 
-        {/* Main Content */}
-        <div className="flex-1 flex flex-col min-w-0">
-          {/* Top Navigation */}
-          <EnhancedTopNavBar
-            currentUser={currentUser}
-            onLogout={logout}
-            onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
-            onToggleTheme={toggleDarkMode}
-            isDarkMode={isDarkMode}
-          />
+                  {/* Welcome Message */}
+                  <div className="hidden md:block">
+                    <h1 className="text-2xl font-bold text-[#F1F1F1]">Dashboard</h1>
+                    <p className="text-gray-400">Welcome back, {currentUser?.name || 'Alex Johnson'}</p>
+                  </div>
+                </div>
 
-          {/* Page Content */}
-          <main className="flex-1 p-4 lg:p-6 overflow-hidden">
-            <div className="animate-fade-in">
-              <AnimatePresence mode="wait">
-                {renderScreen()}
-              </AnimatePresence>
+                {/* Right Side */}
+                <div className="flex items-center gap-4">
+                  {/* Presence Indicator */}
+                  <PresenceIndicator roomId="dashboard" />
+                  
+                  {/* Notifications */}
+                  <NotificationBell />
+
+                  {/* Quick Actions */}
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setShowBiometric(true)}
+                      className="p-2 rounded-full hover:bg-gray-700/50 text-gray-300 transition-colors"
+                      title="Biometric Auth"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                      </svg>
+                    </button>
+                    
+                    <button
+                      onClick={() => {
+                        setQrMode('scan');
+                        setShowQRCode(true);
+                      }}
+                      className="p-2 rounded-full hover:bg-gray-700/50 text-gray-300 transition-colors"
+                      title="QR Payment"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+                      </svg>
+                    </button>
+                  </div>
+
+                  {/* User Avatar */}
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-full bg-purple-600 flex items-center justify-center text-white font-medium">
+                      {currentUser?.name?.charAt(0) || 'U'}
+                    </div>
+                    <span className="hidden md:block font-medium text-[#F1F1F1]">
+                      {currentUser?.name?.split(' ')[0] || 'User'}
+                    </span>
+                  </div>
+                </div>
+              </div>
             </div>
-          </main>
+
+            {/* Voice Commands Panel */}
+            <div className="px-4 lg:px-6 py-2 bg-gray-800/50 border-b border-gray-700/30">
+              <VoiceCommands onCommand={handleVoiceCommand} isEnabled={voiceEnabled} />
+            </div>
+
+            {/* Page Content */}
+            <main className="flex-1 p-4 lg:p-6 overflow-hidden bg-[#0E0E0E]">
+              <div className="animate-fade-in">
+                <AnimatePresence mode="wait">
+                  {renderScreen()}
+                </AnimatePresence>
+              </div>
+            </main>
+          </div>
         </div>
+
+        {/* Biometric Auth Modal */}
+        <AnimatePresence>
+          {showBiometric && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50"
+            >
+              <BiometricAuth
+                mode="setup"
+                onSuccess={() => setShowBiometric(false)}
+                onCancel={() => setShowBiometric(false)}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* QR Payment Modal */}
+        <AnimatePresence>
+          {showQRCode && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50"
+            >
+              <QRPayment
+                mode={qrMode}
+                onSuccess={(data) => {
+                  console.log('QR Payment success:', data);
+                  setShowQRCode(false);
+                }}
+                onCancel={() => setShowQRCode(false)}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Install PWA prompt could be added here */}
       </div>
-    </div>
+    </SecurityProvider>
   );
 };
 
