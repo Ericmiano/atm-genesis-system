@@ -150,7 +150,7 @@
   /* Enhanced Button Styling */
   .btn-primary {
     background-color: hsl(var(--primary-600));
-    @apply hover:bg-primary-700 text-white font-medium px-4 py-2 rounded-lg;
+    @apply text-white font-medium px-4 py-2 rounded-lg;
     @apply transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98];
     @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2;
     --tw-ring-color: hsl(var(--primary-200));
@@ -332,4 +332,3 @@
     --tw-ring-color: hsl(var(--primary-200));
   }
 }
-
