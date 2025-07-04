@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User, Language } from '../types/atm';
 import { supabaseATMService } from '../services/supabaseATMService';
@@ -9,6 +8,7 @@ interface SupabaseATMContextType {
   language: Language;
   isAuthenticated: boolean;
   loading: boolean;
+  initialized: boolean;
   setLanguage: (lang: Language) => void;
   refreshUser: () => Promise<void>;
   logout: () => Promise<void>;
@@ -21,6 +21,7 @@ export function SupabaseATMProvider({ children }: { children: ReactNode }) {
   const [language, setLanguage] = useState<Language>('en');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [initialized, setInitialized] = useState(false);
 
   const refreshUser = async () => {
     console.log('🔄 Refreshing user data...');
@@ -108,6 +109,7 @@ export function SupabaseATMProvider({ children }: { children: ReactNode }) {
               setIsAuthenticated(true);
             } finally {
               setLoading(false);
+              setInitialized(true);
             }
           }, 100);
         } else if (event === 'SIGNED_OUT' || !session) {
@@ -115,6 +117,7 @@ export function SupabaseATMProvider({ children }: { children: ReactNode }) {
           setCurrentUser(null);
           setIsAuthenticated(false);
           setLoading(false);
+          setInitialized(true);
         } else if (event === 'TOKEN_REFRESHED') {
           console.log('🔄 Token refreshed');
           // Don't change loading state on token refresh
@@ -128,6 +131,7 @@ export function SupabaseATMProvider({ children }: { children: ReactNode }) {
       if (error) {
         console.error('❌ Error getting session:', error);
         setLoading(false);
+        setInitialized(true);
         return;
       }
 
@@ -169,10 +173,12 @@ export function SupabaseATMProvider({ children }: { children: ReactNode }) {
         }).finally(() => {
           console.log('🏁 Setting loading to false after session check');
           setLoading(false);
+          setInitialized(true);
         });
       } else {
         console.log('ℹ️ No existing session found');
         setLoading(false);
+        setInitialized(true);
       }
     });
 
@@ -186,6 +192,7 @@ export function SupabaseATMProvider({ children }: { children: ReactNode }) {
   console.log('🔍 Current auth state:', {
     loading,
     isAuthenticated,
+    initialized,
     hasUser: !!currentUser,
     userName: currentUser?.name
   });
@@ -196,6 +203,7 @@ export function SupabaseATMProvider({ children }: { children: ReactNode }) {
       language,
       isAuthenticated,
       loading,
+      initialized,
       setLanguage,
       refreshUser,
       logout
