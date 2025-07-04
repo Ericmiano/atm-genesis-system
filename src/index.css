@@ -1,4 +1,5 @@
 
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -116,12 +117,15 @@
   }
 
   .nav-item.active {
-    @apply bg-primary-100 text-primary-700 font-medium;
+    background-color: hsl(var(--primary-100));
+    color: hsl(var(--primary-700));
+    @apply font-medium;
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
   }
 
   .dark .nav-item.active {
-    @apply bg-primary-900 text-primary-200;
+    background-color: hsl(var(--primary-900));
+    color: hsl(var(--primary-200));
   }
 
   /* Enhanced Header */
@@ -133,19 +137,27 @@
   .banking-input {
     @apply flex h-10 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm ring-offset-background;
     @apply file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground;
-    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-200 focus-visible:ring-offset-2;
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2;
     @apply disabled:cursor-not-allowed disabled:opacity-50 transition-all duration-200;
+    --tw-ring-color: hsl(var(--primary-200));
   }
 
   .banking-input:focus {
-    @apply border-primary-500 shadow-sm;
+    border-color: hsl(var(--primary-500));
+    @apply shadow-sm;
   }
 
   /* Enhanced Button Styling */
   .btn-primary {
-    @apply bg-primary-600 hover:bg-primary-700 text-white font-medium px-4 py-2 rounded-lg;
+    background-color: hsl(var(--primary-600));
+    @apply hover:bg-primary-700 text-white font-medium px-4 py-2 rounded-lg;
     @apply transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98];
-    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-200 focus-visible:ring-offset-2;
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2;
+    --tw-ring-color: hsl(var(--primary-200));
+  }
+
+  .btn-primary:hover {
+    background-color: hsl(var(--primary-700));
   }
 
   .btn-secondary {
@@ -169,11 +181,11 @@
   }
 
   .transaction-item:hover {
-    @apply bg-primary-50;
+    background-color: hsl(var(--primary-50));
   }
 
   .dark .transaction-item:hover {
-    @apply bg-primary-900/20;
+    background-color: hsl(var(--primary-900) / 0.2);
   }
 
   /* Progress Bar Styling */
@@ -187,7 +199,7 @@
 
   /* Gradient Backgrounds */
   .gradient-primary {
-    @apply bg-gradient-to-r from-primary-500 to-primary-700;
+    background: linear-gradient(to right, hsl(var(--primary-500)), hsl(var(--primary-700)));
   }
 
   .gradient-purple {
@@ -204,7 +216,7 @@
 
   /* Avatar Styling */
   .banking-avatar {
-    background-color: #0ea5e9;
+    background-color: hsl(var(--primary-500));
     @apply w-10 h-10 rounded-full flex items-center justify-center text-white font-medium;
   }
 
@@ -316,6 +328,8 @@
   .btn-primary,
   .btn-secondary,
   .nav-item {
-    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-200 focus-visible:ring-offset-2;
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2;
+    --tw-ring-color: hsl(var(--primary-200));
   }
 }
+
