@@ -2,9 +2,11 @@
 import React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SupabaseATMProvider, useSupabaseATM } from './contexts/SupabaseATMContext';
+import { EnhancedThemeProvider } from './contexts/EnhancedThemeContext';
+import { NotificationProvider } from './components/enhanced/NotificationSystem';
 import AuthScreen from './components/AuthScreen';
 import Dashboard from './components/Dashboard';
-import LoadingSpinner from './components/LoadingSpinner';
+import EnhancedLoadingSpinner from './components/enhanced/EnhancedLoadingSpinner';
 import AppInitializer from './components/AppInitializer';
 
 const queryClient = new QueryClient({
@@ -12,6 +14,8 @@ const queryClient = new QueryClient({
     queries: {
       retry: 1,
       refetchOnWindowFocus: false,
+      staleTime: 5 * 60 * 1000, // 5 minutes
+      cacheTime: 10 * 60 * 1000, // 10 minutes
     },
   },
 });
@@ -22,9 +26,17 @@ const AppContent: React.FC = () => {
 
     console.log('AppContent state:', { currentUser, loading, initialized });
 
-    // Show loading spinner while initializing
+    // Show enhanced loading spinner while initializing
     if (loading || !initialized) {
-      return <LoadingSpinner />;
+      return (
+        <div className="min-h-screen bg-[#0E0E0E] flex items-center justify-center">
+          <EnhancedLoadingSpinner 
+            size="xl" 
+            variant="banking" 
+            message="Initializing secure banking session..."
+          />
+        </div>
+      );
     }
 
     // Show dashboard if user is authenticated
@@ -48,7 +60,15 @@ const AppContent: React.FC = () => {
       <AppInitializer>
         {({ user, loading, initialized }) => {
           if (loading || !initialized) {
-            return <LoadingSpinner />;
+            return (
+              <div className="min-h-screen bg-[#0E0E0E] flex items-center justify-center">
+                <EnhancedLoadingSpinner 
+                  size="xl" 
+                  variant="secure" 
+                  message="Establishing secure connection..."
+                />
+              </div>
+            );
           }
 
           if (user) {
@@ -73,11 +93,15 @@ const App: React.FC = () => {
   
   return (
     <QueryClientProvider client={queryClient}>
-      <SupabaseATMProvider>
-        <div className="min-h-screen bg-[#0E0E0E] text-[#F1F1F1]">
-          <AppContent />
-        </div>
-      </SupabaseATMProvider>
+      <EnhancedThemeProvider>
+        <NotificationProvider>
+          <SupabaseATMProvider>
+            <div className="min-h-screen bg-[#0E0E0E] text-[#F1F1F1] transition-all duration-300">
+              <AppContent />
+            </div>
+          </SupabaseATMProvider>
+        </NotificationProvider>
+      </EnhancedThemeProvider>
     </QueryClientProvider>
   );
 };
