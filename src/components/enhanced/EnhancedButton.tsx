@@ -64,7 +64,7 @@ const EnhancedButton: React.FC<EnhancedButtonProps> = ({
       whileHover={!isDisabled ? { scale: 1.05 } : {}}
       whileTap={!isDisabled ? { scale: 0.95 } : {}}
       onTapStart={() => !isDisabled && setIsPressed(true)}
-      onTapEnd={() => setIsPressed(false)}
+      onTap={() => setIsPressed(false)}
       onClick={!isDisabled ? onClick : undefined}
       disabled={isDisabled}
       className={cn(

@@ -44,7 +44,7 @@ const InteractiveCard: React.FC<InteractiveCardProps> = ({
       onHoverStart={() => setIsHovered(true)}
       onHoverEnd={() => setIsHovered(false)}
       onTapStart={() => setIsPressed(true)}
-      onTapEnd={() => setIsPressed(false)}
+      onTap={() => setIsPressed(false)}
       onClick={onClick}
       className={cn(
         'banking-card relative overflow-hidden transition-all duration-300',
