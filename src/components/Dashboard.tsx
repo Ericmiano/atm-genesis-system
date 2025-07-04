@@ -15,7 +15,6 @@ import SystemMetricsScreen from './dashboard/SystemMetricsScreen';
 import AdvancedSecurityDashboard from './dashboard/AdvancedSecurityDashboard';
 import AccessibilitySettings from './accessibility/AccessibilitySettings';
 import SecuritySettings from './accessibility/SecuritySettings';
-import InteractiveCard from './enhanced/InteractiveCard';
 
 const Dashboard: React.FC = () => {
   const [activeScreen, setActiveScreen] = useState('overview');
@@ -136,9 +135,9 @@ const Dashboard: React.FC = () => {
 
   const renderScreen = () => {
     const screenVariants = {
-      hidden: { opacity: 0, x: 20 },
-      visible: { opacity: 1, x: 0, transition: { duration: 0.3 } },
-      exit: { opacity: 0, x: -20, transition: { duration: 0.2 } }
+      hidden: { opacity: 0, y: 20 },
+      visible: { opacity: 1, y: 0, transition: { duration: 0.3 } },
+      exit: { opacity: 0, y: -20, transition: { duration: 0.2 } }
     };
 
     switch (activeScreen) {
@@ -212,11 +211,7 @@ const Dashboard: React.FC = () => {
   };
 
   return (
-    <div className={`min-h-screen transition-all duration-300 ${
-      isDarkMode 
-        ? 'bg-gradient-to-br from-[#0E0E0E] to-[#1A1A1A] text-[#F1F1F1]' 
-        : 'bg-gradient-to-br from-gray-50 to-white text-gray-900'
-    }`}>
+    <div className="min-h-screen bg-background text-foreground transition-all duration-300">
       {/* Mobile Sidebar Overlay */}
       <AnimatePresence>
         {isSidebarOpen && (
@@ -224,38 +219,46 @@ const Dashboard: React.FC = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 z-40 md:hidden"
+            className="fixed inset-0 bg-black/50 z-40 lg:hidden"
             onClick={() => setIsSidebarOpen(false)}
           />
         )}
       </AnimatePresence>
 
-      {/* Sidebar */}
-      <EnhancedSidebar
-        activeTab={activeScreen}
-        setActiveTab={setActiveScreen}
-        onLogout={logout}
-        isCollapsed={false}
-        onToggleCollapse={() => {}}
-      />
+      <div className="flex min-h-screen w-full">
+        {/* Sidebar */}
+        <motion.div
+          className={`${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 fixed lg:static inset-y-0 left-0 z-50 lg:z-auto transition-transform duration-300`}
+        >
+          <EnhancedSidebar
+            activeTab={activeScreen}
+            setActiveTab={setActiveScreen}
+            onLogout={logout}
+            isCollapsed={false}
+            onToggleCollapse={() => {}}
+          />
+        </motion.div>
 
-      {/* Main Content */}
-      <div className="md:ml-64 transition-all duration-300">
-        {/* Top Navigation */}
-        <EnhancedTopNavBar
-          currentUser={currentUser}
-          onLogout={logout}
-          onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
-          onToggleTheme={toggleDarkMode}
-          isDarkMode={isDarkMode}
-        />
+        {/* Main Content */}
+        <div className="flex-1 flex flex-col min-w-0">
+          {/* Top Navigation */}
+          <EnhancedTopNavBar
+            currentUser={currentUser}
+            onLogout={logout}
+            onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+            onToggleTheme={toggleDarkMode}
+            isDarkMode={isDarkMode}
+          />
 
-        {/* Page Content */}
-        <main className="p-4 md:p-6 lg:p-8">
-          <AnimatePresence mode="wait">
-            {renderScreen()}
-          </AnimatePresence>
-        </main>
+          {/* Page Content */}
+          <main className="flex-1 p-4 lg:p-6 overflow-hidden">
+            <div className="animate-fade-in">
+              <AnimatePresence mode="wait">
+                {renderScreen()}
+              </AnimatePresence>
+            </div>
+          </main>
+        </div>
       </div>
     </div>
   );
