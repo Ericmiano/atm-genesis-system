@@ -49,7 +49,13 @@ export class RealTimeService {
       channel
         .on('presence', { event: 'sync' }, () => {
           const presenceState = channel.presenceState();
-          const users = Object.values(presenceState).flat() as PresenceData[];
+          const users = Object.values(presenceState).flat().map((presence: any) => ({
+            userId: presence.userId || presence.user_id || 'unknown',
+            username: presence.username || 'Anonymous',
+            status: presence.status || 'online',
+            lastSeen: presence.lastSeen || presence.last_seen || new Date().toISOString(),
+            sessionId: presence.sessionId || presence.session_id
+          })) as PresenceData[];
           callback(users);
         })
         .on('presence', { event: 'join' }, ({ newPresences }) => {
@@ -214,7 +220,18 @@ export class RealTimeService {
             filter: `user_id=eq.${userId}`,
           },
           (payload) => {
-            callback(payload.new as NotificationData);
+            const dbNotification = payload.new as any;
+            const notification: NotificationData = {
+              id: dbNotification.id,
+              title: dbNotification.title,
+              message: dbNotification.message,
+              type: dbNotification.type as 'transaction' | 'security' | 'fraud' | 'info',
+              priority: dbNotification.priority as 'low' | 'medium' | 'high' | 'critical',
+              read: dbNotification.read,
+              timestamp: dbNotification.created_at,
+              userId: dbNotification.user_id
+            };
+            callback(notification);
           }
         )
         .subscribe();
@@ -238,7 +255,17 @@ export class RealTimeService {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      return data as NotificationData[] || [];
+      
+      return (data || []).map((dbNotification: any): NotificationData => ({
+        id: dbNotification.id,
+        title: dbNotification.title,
+        message: dbNotification.message,
+        type: dbNotification.type as 'transaction' | 'security' | 'fraud' | 'info',
+        priority: dbNotification.priority as 'low' | 'medium' | 'high' | 'critical',
+        read: dbNotification.read,
+        timestamp: dbNotification.created_at,
+        userId: dbNotification.user_id
+      }));
     } catch (error) {
       console.error('Error fetching unread notifications:', error);
       return [];
