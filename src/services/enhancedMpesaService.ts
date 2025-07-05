@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { authService } from './authService';
 
@@ -131,7 +130,7 @@ export class EnhancedMpesaService {
         .from('mpesa_transactions')
         .insert({
           user_id: user.id,
-          transaction_type: 'SEND_MONEY',
+          transaction_type: 'SEND_MONEY' as const,
           amount: request.amount,
           recipient: request.recipient,
           recipient_name: request.recipientName,
@@ -198,7 +197,7 @@ export class EnhancedMpesaService {
           transaction: {
             id: transactionData.id,
             userId: transactionData.user_id,
-            transactionType: transactionData.transaction_type,
+            transactionType: transactionData.transaction_type as 'SEND_MONEY',
             amount: transactionData.amount,
             recipient: transactionData.recipient,
             recipientName: transactionData.recipient_name,
@@ -256,7 +255,7 @@ export class EnhancedMpesaService {
         .from('mpesa_transactions')
         .insert({
           user_id: user.id,
-          transaction_type: 'PAYBILL',
+          transaction_type: 'PAYBILL' as const,
           amount: request.amount,
           recipient: request.businessNumber,
           business_number: request.businessNumber,
@@ -279,11 +278,13 @@ export class EnhancedMpesaService {
       });
 
       if (mpesaResult.success) {
+        // Update user balance
         await supabase
           .from('users')
           .update({ balance: user.balance - totalCost })
           .eq('id', user.id);
 
+        // Update transaction status
         await supabase
           .from('mpesa_transactions')
           .update({
@@ -293,6 +294,7 @@ export class EnhancedMpesaService {
           })
           .eq('id', transactionData.id);
 
+        // Create transaction record in main transactions table
         await supabase
           .from('transactions')
           .insert({
@@ -304,6 +306,7 @@ export class EnhancedMpesaService {
             to_account: `${request.businessNumber}-${request.accountNumber}`
           });
 
+        // Create notification
         await supabase
           .from('notifications')
           .insert({
@@ -319,7 +322,7 @@ export class EnhancedMpesaService {
           transaction: {
             id: transactionData.id,
             userId: transactionData.user_id,
-            transactionType: transactionData.transaction_type,
+            transactionType: transactionData.transaction_type as 'PAYBILL',
             amount: transactionData.amount,
             recipient: transactionData.recipient,
             businessNumber: transactionData.business_number,
@@ -376,7 +379,7 @@ export class EnhancedMpesaService {
         .from('mpesa_transactions')
         .insert({
           user_id: user.id,
-          transaction_type: 'BUY_GOODS',
+          transaction_type: 'BUY_GOODS' as const,
           amount: request.amount,
           recipient: request.tillNumber,
           till_number: request.tillNumber,
@@ -397,11 +400,13 @@ export class EnhancedMpesaService {
       });
 
       if (mpesaResult.success) {
+        // Update user balance
         await supabase
           .from('users')
           .update({ balance: user.balance - totalCost })
           .eq('id', user.id);
 
+        // Update transaction status
         await supabase
           .from('mpesa_transactions')
           .update({
@@ -411,6 +416,7 @@ export class EnhancedMpesaService {
           })
           .eq('id', transactionData.id);
 
+        // Create transaction record in main transactions table
         await supabase
           .from('transactions')
           .insert({
@@ -422,6 +428,7 @@ export class EnhancedMpesaService {
             to_account: request.tillNumber
           });
 
+        // Create notification
         await supabase
           .from('notifications')
           .insert({
@@ -437,7 +444,7 @@ export class EnhancedMpesaService {
           transaction: {
             id: transactionData.id,
             userId: transactionData.user_id,
-            transactionType: transactionData.transaction_type,
+            transactionType: transactionData.transaction_type as 'BUY_GOODS',
             amount: transactionData.amount,
             recipient: transactionData.recipient,
             tillNumber: transactionData.till_number,
@@ -494,7 +501,7 @@ export class EnhancedMpesaService {
         .from('mpesa_transactions')
         .insert({
           user_id: user.id,
-          transaction_type: 'BUY_AIRTIME',
+          transaction_type: 'BUY_AIRTIME' as const,
           amount: request.amount,
           recipient: request.phoneNumber,
           phone_number: request.phoneNumber,
@@ -515,11 +522,13 @@ export class EnhancedMpesaService {
       });
 
       if (mpesaResult.success) {
+        // Update user balance
         await supabase
           .from('users')
           .update({ balance: user.balance - totalCost })
           .eq('id', user.id);
 
+        // Update transaction status
         await supabase
           .from('mpesa_transactions')
           .update({
@@ -529,6 +538,7 @@ export class EnhancedMpesaService {
           })
           .eq('id', transactionData.id);
 
+        // Create transaction record in main transactions table
         await supabase
           .from('transactions')
           .insert({
@@ -540,6 +550,7 @@ export class EnhancedMpesaService {
             to_account: request.phoneNumber
           });
 
+        // Create notification
         await supabase
           .from('notifications')
           .insert({
@@ -555,7 +566,7 @@ export class EnhancedMpesaService {
           transaction: {
             id: transactionData.id,
             userId: transactionData.user_id,
-            transactionType: transactionData.transaction_type,
+            transactionType: transactionData.transaction_type as 'BUY_AIRTIME',
             amount: transactionData.amount,
             recipient: transactionData.recipient,
             phoneNumber: transactionData.phone_number,
@@ -595,7 +606,7 @@ export class EnhancedMpesaService {
         .from('mpesa_transactions')
         .insert({
           user_id: user.id,
-          transaction_type: 'DEPOSIT',
+          transaction_type: 'DEPOSIT' as const,
           amount: amount,
           recipient: user.accountNumber,
           phone_number: phoneNumber,
@@ -617,11 +628,13 @@ export class EnhancedMpesaService {
       });
 
       if (mpesaResult.success) {
+        // Update user balance
         await supabase
           .from('users')
           .update({ balance: user.balance + amount })
           .eq('id', user.id);
 
+        // Update transaction status
         await supabase
           .from('mpesa_transactions')
           .update({
@@ -631,6 +644,7 @@ export class EnhancedMpesaService {
           })
           .eq('id', transactionData.id);
 
+        // Create transaction record in main transactions table
         await supabase
           .from('transactions')
           .insert({
@@ -647,7 +661,7 @@ export class EnhancedMpesaService {
           transaction: {
             id: transactionData.id,
             userId: transactionData.user_id,
-            transactionType: transactionData.transaction_type,
+            transactionType: transactionData.transaction_type as 'DEPOSIT',
             amount: transactionData.amount,
             recipient: transactionData.recipient,
             phoneNumber: transactionData.phone_number,
@@ -691,7 +705,7 @@ export class EnhancedMpesaService {
       return data.map(t => ({
         id: t.id,
         userId: t.user_id,
-        transactionType: t.transaction_type,
+        transactionType: t.transaction_type as MpesaTransaction['transactionType'],
         amount: t.amount,
         recipient: t.recipient,
         recipientName: t.recipient_name,
@@ -700,7 +714,7 @@ export class EnhancedMpesaService {
         tillNumber: t.till_number,
         phoneNumber: t.phone_number,
         description: t.description,
-        status: t.status,
+        status: t.status as MpesaTransaction['status'],
         referenceCode: t.reference_code,
         mpesaReceiptNumber: t.mpesa_receipt_number,
         transactionCost: t.transaction_cost || 0,

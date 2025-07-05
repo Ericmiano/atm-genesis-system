@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 
 export interface KYCDocument {
@@ -46,10 +45,10 @@ export class KYCService {
         userId: data.user_id,
         phoneNumber: data.phone_number,
         dateOfBirth: data.date_of_birth,
-        gender: data.gender,
+        gender: data.gender as UserProfile['gender'],
         nationality: data.nationality,
-        kycStatus: data.kyc_status,
-        accountTier: data.account_tier,
+        kycStatus: data.kyc_status as UserProfile['kycStatus'],
+        accountTier: data.account_tier as UserProfile['accountTier'],
         biometricEnabled: data.biometric_enabled,
         twoFactorEnabled: data.two_factor_enabled,
         createdAt: data.created_at,
@@ -86,10 +85,10 @@ export class KYCService {
         userId: data.user_id,
         phoneNumber: data.phone_number,
         dateOfBirth: data.date_of_birth,
-        gender: data.gender,
+        gender: data.gender as UserProfile['gender'],
         nationality: data.nationality,
-        kycStatus: data.kyc_status,
-        accountTier: data.account_tier,
+        kycStatus: data.kyc_status as UserProfile['kycStatus'],
+        accountTier: data.account_tier as UserProfile['accountTier'],
         biometricEnabled: data.biometric_enabled,
         twoFactorEnabled: data.two_factor_enabled,
         createdAt: data.created_at,
@@ -149,10 +148,10 @@ export class KYCService {
       return {
         id: data.id,
         userId: data.user_id,
-        documentType: data.document_type,
+        documentType: data.document_type as KYCDocument['documentType'],
         documentUrl: data.document_url,
         documentNumber: data.document_number,
-        status: data.status,
+        status: data.status as KYCDocument['status'],
         verificationNotes: data.verification_notes,
         uploadedAt: data.uploaded_at,
         verifiedAt: data.verified_at
@@ -176,10 +175,10 @@ export class KYCService {
       return data.map(doc => ({
         id: doc.id,
         userId: doc.user_id,
-        documentType: doc.document_type,
+        documentType: doc.document_type as KYCDocument['documentType'],
         documentUrl: doc.document_url,
         documentNumber: doc.document_number,
-        status: doc.status,
+        status: doc.status as KYCDocument['status'],
         verificationNotes: doc.verification_notes,
         uploadedAt: doc.uploaded_at,
         verifiedAt: doc.verified_at
