@@ -1,5 +1,6 @@
 
 import React, { useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SupabaseATMProvider, useSupabaseATM } from './contexts/SupabaseATMContext';
 import { EnhancedThemeProvider } from './contexts/EnhancedThemeContext';
@@ -8,6 +9,9 @@ import AuthScreen from './components/AuthScreen';
 import Dashboard from './components/Dashboard';
 import EnhancedLoadingSpinner from './components/enhanced/EnhancedLoadingSpinner';
 import AppInitializer from './components/AppInitializer';
+import LandingPage from './components/landing/LandingPage';
+import SignupForm from './components/landing/SignupForm';
+import ProductsPage from './components/landing/ProductsPage';
 import { 
   registerServiceWorker, 
   requestNotificationPermission, 
@@ -50,13 +54,18 @@ const AppContent: React.FC = () => {
       return <Dashboard />;
     }
 
-    // Show auth screen for non-authenticated users
+    // Show auth screen for non-authenticated users (this will be routed properly)
     return (
-      <AuthScreen 
-        onAuthSuccess={() => {
-          console.log('Auth success, user should be redirected automatically');
-        }} 
-      />
+      <Router>
+        <Routes>
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/signup" element={<SignupForm />} />
+          <Route path="/products" element={<ProductsPage />} />
+          <Route path="/login" element={<AuthScreen onAuthSuccess={() => {
+            console.log('Auth success, user should be redirected automatically');
+          }} />} />
+        </Routes>
+      </Router>
     );
   } catch (error) {
     console.error('Error in AppContent, falling back to AppInitializer:', error);
@@ -82,11 +91,16 @@ const AppContent: React.FC = () => {
           }
 
           return (
-            <AuthScreen 
-              onAuthSuccess={() => {
-                console.log('Auth success via fallback');
-              }} 
-            />
+            <Router>
+              <Routes>
+                <Route path="/" element={<LandingPage />} />
+                <Route path="/signup" element={<SignupForm />} />
+                <Route path="/products" element={<ProductsPage />} />
+                <Route path="/login" element={<AuthScreen onAuthSuccess={() => {
+                  console.log('Auth success via fallback');
+                }} />} />
+              </Routes>
+            </Router>
           );
         }}
       </AppInitializer>
@@ -140,7 +154,7 @@ const App: React.FC = () => {
       <EnhancedThemeProvider>
         <NotificationProvider>
           <SupabaseATMProvider>
-            <div className="min-h-screen bg-[#0E0E0E] text-[#F1F1F1] transition-all duration-300">
+            <div className="min-h-screen transition-all duration-300">
               <AppContent />
             </div>
           </SupabaseATMProvider>

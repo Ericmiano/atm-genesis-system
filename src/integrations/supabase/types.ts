@@ -164,6 +164,39 @@ export type Database = {
         }
         Relationships: []
       }
+      contact_messages: {
+        Row: {
+          created_at: string | null
+          email: string
+          id: string
+          message: string
+          name: string
+          phone: string | null
+          status: string | null
+          subject: string
+        }
+        Insert: {
+          created_at?: string | null
+          email: string
+          id?: string
+          message: string
+          name: string
+          phone?: string | null
+          status?: string | null
+          subject: string
+        }
+        Update: {
+          created_at?: string | null
+          email?: string
+          id?: string
+          message?: string
+          name?: string
+          phone?: string | null
+          status?: string | null
+          subject?: string
+        }
+        Relationships: []
+      }
       fraud_alerts: {
         Row: {
           description: string
@@ -201,6 +234,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      kyc_documents: {
+        Row: {
+          document_number: string | null
+          document_type: string
+          document_url: string | null
+          id: string
+          status: string | null
+          uploaded_at: string | null
+          user_id: string | null
+          verification_notes: string | null
+          verified_at: string | null
+        }
+        Insert: {
+          document_number?: string | null
+          document_type: string
+          document_url?: string | null
+          id?: string
+          status?: string | null
+          uploaded_at?: string | null
+          user_id?: string | null
+          verification_notes?: string | null
+          verified_at?: string | null
+        }
+        Update: {
+          document_number?: string | null
+          document_type?: string
+          document_url?: string | null
+          id?: string
+          status?: string | null
+          uploaded_at?: string | null
+          user_id?: string | null
+          verification_notes?: string | null
+          verified_at?: string | null
+        }
+        Relationships: []
       }
       loan_payments: {
         Row: {
@@ -314,6 +383,129 @@ export type Database = {
           },
         ]
       }
+      mpesa_transactions: {
+        Row: {
+          account_number: string | null
+          amount: number
+          business_number: string | null
+          completed_at: string | null
+          created_at: string | null
+          description: string
+          id: string
+          mpesa_receipt_number: string | null
+          phone_number: string | null
+          recipient: string
+          recipient_name: string | null
+          reference_code: string
+          status: string | null
+          till_number: string | null
+          transaction_cost: number | null
+          transaction_type: string
+          user_id: string | null
+        }
+        Insert: {
+          account_number?: string | null
+          amount: number
+          business_number?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          description: string
+          id?: string
+          mpesa_receipt_number?: string | null
+          phone_number?: string | null
+          recipient: string
+          recipient_name?: string | null
+          reference_code: string
+          status?: string | null
+          till_number?: string | null
+          transaction_cost?: number | null
+          transaction_type: string
+          user_id?: string | null
+        }
+        Update: {
+          account_number?: string | null
+          amount?: number
+          business_number?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          description?: string
+          id?: string
+          mpesa_receipt_number?: string | null
+          phone_number?: string | null
+          recipient?: string
+          recipient_name?: string | null
+          reference_code?: string
+          status?: string | null
+          till_number?: string | null
+          transaction_cost?: number | null
+          transaction_type?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      newsletter_subscriptions: {
+        Row: {
+          email: string
+          id: string
+          status: string | null
+          subscribed_at: string | null
+          unsubscribed_at: string | null
+        }
+        Insert: {
+          email: string
+          id?: string
+          status?: string | null
+          subscribed_at?: string | null
+          unsubscribed_at?: string | null
+        }
+        Update: {
+          email?: string
+          id?: string
+          status?: string | null
+          subscribed_at?: string | null
+          unsubscribed_at?: string | null
+        }
+        Relationships: []
+      }
+      notifications: {
+        Row: {
+          created_at: string | null
+          data: Json | null
+          id: string
+          message: string
+          priority: string | null
+          read: boolean | null
+          title: string
+          type: string
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          data?: Json | null
+          id?: string
+          message: string
+          priority?: string | null
+          read?: boolean | null
+          title: string
+          type: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          data?: Json | null
+          id?: string
+          message?: string
+          priority?: string | null
+          read?: boolean | null
+          title?: string
+          type?: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       transactions: {
         Row: {
           amount: number
@@ -360,6 +552,51 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_profiles: {
+        Row: {
+          account_tier: string | null
+          biometric_enabled: boolean | null
+          created_at: string | null
+          date_of_birth: string | null
+          gender: string | null
+          id: string
+          kyc_status: string | null
+          nationality: string | null
+          phone_number: string | null
+          two_factor_enabled: boolean | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          account_tier?: string | null
+          biometric_enabled?: boolean | null
+          created_at?: string | null
+          date_of_birth?: string | null
+          gender?: string | null
+          id?: string
+          kyc_status?: string | null
+          nationality?: string | null
+          phone_number?: string | null
+          two_factor_enabled?: boolean | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          account_tier?: string | null
+          biometric_enabled?: boolean | null
+          created_at?: string | null
+          date_of_birth?: string | null
+          gender?: string | null
+          id?: string
+          kyc_status?: string | null
+          nationality?: string | null
+          phone_number?: string | null
+          two_factor_enabled?: boolean | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
       }
       users: {
         Row: {
@@ -462,6 +699,10 @@ export type Database = {
       delete_user_account: {
         Args: { target_user_id: string }
         Returns: boolean
+      }
+      generate_mpesa_reference: {
+        Args: Record<PropertyKey, never>
+        Returns: string
       }
       generate_unique_account_number: {
         Args: Record<PropertyKey, never>
