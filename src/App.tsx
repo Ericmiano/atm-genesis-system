@@ -135,14 +135,20 @@ const App: React.FC = () => {
         return cleanup;
       } catch (error) {
         console.error('Error initializing PWA features:', error);
+        return () => {}; // Return empty cleanup function on error
       }
     };
 
-    const cleanup = initializePWA();
+    const initCleanup = initializePWA();
     
     return () => {
-      if (cleanup && typeof cleanup === 'function') {
-        cleanup();
+      // Handle cleanup properly
+      if (initCleanup && typeof initCleanup.then === 'function') {
+        initCleanup.then((cleanup) => {
+          if (cleanup && typeof cleanup === 'function') {
+            cleanup();
+          }
+        });
       }
     };
   }, []);

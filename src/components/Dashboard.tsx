@@ -135,7 +135,7 @@ const Dashboard: React.FC = () => {
     
     return () => {
       console.log('Dashboard unmounted');
-      realTimeService.unsubscribeFromAll();
+      realTimeService.unsubscribeAll();
     };
   }, [currentUser]);
 
