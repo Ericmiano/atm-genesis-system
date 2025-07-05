@@ -93,7 +93,8 @@ export const getStorageUsage = async () => {
     return {
       quota: estimate.quota,
       usage: estimate.usage,
-      usageDetails: estimate.usageDetails
+      // usageDetails is not available in all browsers
+      usageDetails: (estimate as any).usageDetails || {}
     };
   }
   return null;
@@ -107,9 +108,13 @@ export const onConnectionChange = (callback: (isOnline: boolean) => void) => {
 };
 
 export const enableBackgroundSync = (tag: string) => {
-  if ('serviceWorker' in navigator && 'sync' in window.ServiceWorkerRegistration.prototype) {
+  if ('serviceWorker' in navigator && 'sync' in (window as any).ServiceWorkerRegistration.prototype) {
     navigator.serviceWorker.ready.then((registration) => {
-      return registration.sync.register(tag);
+      // Type assertion for background sync
+      const syncRegistration = registration as any;
+      if (syncRegistration.sync) {
+        return syncRegistration.sync.register(tag);
+      }
     }).catch((error) => {
       console.log('Background sync registration failed:', error);
     });

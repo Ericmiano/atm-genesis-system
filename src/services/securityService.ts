@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { User } from '../types/atm';
 
@@ -260,6 +259,12 @@ export class SecurityService {
     return atob(encryptedData); // Simple base64 decoding for demo
   }
 
+  // Card Number Masking
+  maskCardNumber(cardNumber: string): string {
+    if (!cardNumber || cardNumber.length < 4) return cardNumber;
+    return '**** **** **** ' + cardNumber.slice(-4);
+  }
+
   // Biometric Authentication (mock implementation using localStorage)
   async setupBiometric(userId: string, biometricType: 'fingerprint' | 'face' | 'voice', biometricData: string): Promise<{ success: boolean; message: string }> {
     try {
@@ -362,6 +367,190 @@ export class SecurityService {
     } catch (error) {
       console.error('Device fingerprint validation failed:', error);
       return { isTrusted: false, riskScore: 0.9 };
+    }
+  }
+
+  // Behavioral Analysis (mock implementation)
+  async recordBehavioralPattern(userId: string, pattern: any): Promise<void> {
+    try {
+      const behavioralStore = JSON.parse(localStorage.getItem('behavioral_patterns') || '{}');
+      if (!behavioralStore[userId]) {
+        behavioralStore[userId] = [];
+      }
+      
+      behavioralStore[userId].push({
+        ...pattern,
+        timestamp: new Date().toISOString()
+      });
+      
+      // Keep only last 50 patterns
+      behavioralStore[userId] = behavioralStore[userId].slice(-50);
+      localStorage.setItem('behavioral_patterns', JSON.stringify(behavioralStore));
+    } catch (error) {
+      console.error('Failed to record behavioral pattern:', error);
+    }
+  }
+
+  async analyzeBehavioralAnomaly(userId: string, currentPattern: any): Promise<{ isAnomaly: boolean; confidence: number }> {
+    try {
+      const behavioralStore = JSON.parse(localStorage.getItem('behavioral_patterns') || '{}');
+      const userPatterns = behavioralStore[userId] || [];
+      
+      if (userPatterns.length < 5) {
+        return { isAnomaly: false, confidence: 0.1 };
+      }
+      
+      // Simple anomaly detection based on typing pattern
+      const avgTypingSpeed = userPatterns.reduce((sum: number, p: any) => sum + (p.typingPattern?.length || 0), 0) / userPatterns.length;
+      const currentTypingSpeed = currentPattern.typingPattern?.length || 0;
+      
+      const deviation = Math.abs(currentTypingSpeed - avgTypingSpeed) / avgTypingSpeed;
+      const isAnomaly = deviation > 0.5; // 50% deviation threshold
+      
+      return { isAnomaly, confidence: Math.min(deviation, 1.0) };
+    } catch (error) {
+      console.error('Behavioral anomaly analysis failed:', error);
+      return { isAnomaly: false, confidence: 0 };
+    }
+  }
+
+  // Geo-fencing (mock implementation)
+  async setupGeoFencing(userId: string, allowedLocations: Array<{ lat: number; lng: number; radius: number }>): Promise<{ success: boolean; message: string }> {
+    try {
+      const geoStore = JSON.parse(localStorage.getItem('geo_fencing') || '{}');
+      geoStore[userId] = {
+        allowedLocations,
+        enabled: true,
+        created_at: new Date().toISOString()
+      };
+      localStorage.setItem('geo_fencing', JSON.stringify(geoStore));
+      
+      await this.logSecurityEvent(userId, 'GEO_FENCING_SETUP', `Geo-fencing enabled with ${allowedLocations.length} locations`);
+      return { success: true, message: 'Geo-fencing setup successful' };
+    } catch (error) {
+      console.error('Geo-fencing setup failed:', error);
+      return { success: false, message: 'Geo-fencing setup failed' };
+    }
+  }
+
+  async validateGeoLocation(userId: string, currentLocation: { lat: number; lng: number }): Promise<{ isAllowed: boolean; distance: number }> {
+    try {
+      const geoStore = JSON.parse(localStorage.getItem('geo_fencing') || '{}');
+      const userGeoSettings = geoStore[userId];
+      
+      if (!userGeoSettings || !userGeoSettings.enabled) {
+        return { isAllowed: true, distance: 0 };
+      }
+      
+      let minDistance = Infinity;
+      let isAllowed = false;
+      
+      for (const location of userGeoSettings.allowedLocations) {
+        const distance = this.calculateDistance(currentLocation, location);
+        minDistance = Math.min(minDistance, distance);
+        
+        if (distance <= location.radius) {
+          isAllowed = true;
+          break;
+        }
+      }
+      
+      return { isAllowed, distance: minDistance };
+    } catch (error) {
+      console.error('Geo-location validation failed:', error);
+      return { isAllowed: false, distance: Infinity };
+    }
+  }
+
+  // Time Restrictions (mock implementation)
+  async setupTimeRestrictions(userId: string, restrictions: Array<{ day: number; startHour: number; endHour: number }>): Promise<{ success: boolean; message: string }> {
+    try {
+      const timeStore = JSON.parse(localStorage.getItem('time_restrictions') || '{}');
+      timeStore[userId] = {
+        restrictions,
+        enabled: true,
+        created_at: new Date().toISOString()
+      };
+      localStorage.setItem('time_restrictions', JSON.stringify(timeStore));
+      
+      await this.logSecurityEvent(userId, 'TIME_RESTRICTIONS_SETUP', `Time restrictions enabled`);
+      return { success: true, message: 'Time restrictions setup successful' };
+    } catch (error) {
+      console.error('Time restrictions setup failed:', error);
+      return { success: false, message: 'Time restrictions setup failed' };
+    }
+  }
+
+  async validateTimeRestrictions(userId: string): Promise<{ isAllowed: boolean; reason?: string }> {
+    try {
+      const timeStore = JSON.parse(localStorage.getItem('time_restrictions') || '{}');
+      const userTimeSettings = timeStore[userId];
+      
+      if (!userTimeSettings || !userTimeSettings.enabled) {
+        return { isAllowed: true };
+      }
+      
+      const now = new Date();
+      const currentDay = now.getDay();
+      const currentHour = now.getHours();
+      
+      for (const restriction of userTimeSettings.restrictions) {
+        if (restriction.day === currentDay) {
+          if (currentHour >= restriction.startHour && currentHour < restriction.endHour) {
+            return { isAllowed: true };
+          }
+        }
+      }
+      
+      return { isAllowed: false, reason: 'Access denied: Outside allowed time window' };
+    } catch (error) {
+      console.error('Time restrictions validation failed:', error);
+      return { isAllowed: false, reason: 'Time validation failed' };
+    }
+  }
+
+  // Real-time Threat Detection (mock implementation)
+  async detectRealTimeThreats(userId: string, action: string, context: any): Promise<{ threats: string[]; riskScore: number; recommendations: string[] }> {
+    try {
+      const threats: string[] = [];
+      const recommendations: string[] = [];
+      let riskScore = 0;
+      
+      // Check for suspicious patterns
+      if (action === 'WITHDRAWAL' && context.amount > 100000) {
+        threats.push('Large withdrawal amount');
+        riskScore += 0.4;
+        recommendations.push('Verify identity with additional authentication');
+      }
+      
+      if (action === 'LOGIN' && context.deviceInfo?.platform !== 'Win32') {
+        threats.push('Login from unusual device');
+        riskScore += 0.2;
+        recommendations.push('Monitor device for suspicious activity');
+      }
+      
+      // Check behavioral patterns
+      const behavioralStore = JSON.parse(localStorage.getItem('behavioral_patterns') || '{}');
+      const userPatterns = behavioralStore[userId] || [];
+      
+      if (userPatterns.length > 0) {
+        const recentActivity = userPatterns.slice(-5);
+        const avgInterval = recentActivity.reduce((sum: number, p: any, i: number) => {
+          if (i === 0) return sum;
+          return sum + (new Date(p.timestamp).getTime() - new Date(recentActivity[i-1].timestamp).getTime());
+        }, 0) / Math.max(recentActivity.length - 1, 1);
+        
+        if (avgInterval < 30000) { // Less than 30 seconds between actions
+          threats.push('Rapid sequential actions detected');
+          riskScore += 0.3;
+          recommendations.push('Implement rate limiting');
+        }
+      }
+      
+      return { threats, riskScore: Math.min(riskScore, 1.0), recommendations };
+    } catch (error) {
+      console.error('Real-time threat detection failed:', error);
+      return { threats: [], riskScore: 0, recommendations: [] };
     }
   }
 

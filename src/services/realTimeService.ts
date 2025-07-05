@@ -373,9 +373,10 @@ export class RealTimeService {
   }
 
   onConnectionChange(callback: (status: boolean) => void): void {
-    // Use realtime connection events
-    supabase.realtime.onOpen(() => callback(true));
-    supabase.realtime.onClose(() => callback(false));
+    // Mock connection status changes since the API doesn't have direct events
+    setInterval(() => {
+      callback(this.getConnectionStatus());
+    }, 5000);
   }
 }
 
