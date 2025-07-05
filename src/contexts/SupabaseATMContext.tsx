@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User, Language } from '../types/atm';
 import { supabaseATMService } from '../services/supabaseATMService';
@@ -26,7 +27,6 @@ export function SupabaseATMProvider({ children }: { children: ReactNode }) {
   const refreshUser = async () => {
     console.log('🔄 Refreshing user data...');
     try {
-      console.log('Context: Refreshing user data...');
       const user = await supabaseATMService.getCurrentUser();
       console.log('✅ User data retrieved:', user ? `${user.name} (${user.email})` : 'null');
       setCurrentUser(user);
@@ -56,56 +56,54 @@ export function SupabaseATMProvider({ children }: { children: ReactNode }) {
       console.log('✅ Logout successful');
     } catch (error) {
       console.error('❌ Error during logout:', error);
-      // Still clear local state even if logout fails
       setCurrentUser(null);
       setIsAuthenticated(false);
     }
   };
 
+  const createFallbackUser = (session: any) => ({
+    id: session.user.id,
+    name: session.user.email || 'User',
+    email: session.user.email || '',
+    accountNumber: '0000000000',
+    balance: 0,
+    pin: '0000',
+    cardNumber: '0000000000000000',
+    expiryDate: '00/00',
+    cvv: '000',
+    cardType: 'VISA' as const,
+    role: 'USER' as const,
+    username: session.user.email?.split('@')[0] || 'user',
+    password: '',
+    isLocked: false,
+    lockReason: undefined,
+    lockDate: undefined,
+    failedAttempts: 0,
+    failedPasswordAttempts: 0,
+    lastPasswordAttempt: undefined,
+    createdAt: new Date().toISOString(),
+    lastLogin: undefined,
+    creditScore: undefined,
+    monthlyIncome: undefined,
+    passwordLastChanged: undefined,
+    mustChangePassword: false
+  });
+
   useEffect(() => {
     console.log('🚀 Setting up auth state listener...');
     
-    // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         console.log('🔐 Auth state change:', event, session?.user?.email || 'no user');
         
         if (event === 'SIGNED_IN' && session?.user) {
           console.log('✅ User signed in, refreshing user data...');
-          // Use setTimeout to prevent potential deadlocks
           setTimeout(async () => {
             try {
               await refreshUser();
             } catch (error) {
               console.error('❌ Error during sign-in refresh:', error);
-              // Create a basic user profile if refresh fails
-              setCurrentUser({
-                id: session.user.id,
-                name: session.user.email || 'User',
-                email: session.user.email || '',
-                accountNumber: '0000000000',
-                balance: 0,
-                pin: '0000',
-                cardNumber: '0000000000000000',
-                expiryDate: '00/00',
-                cvv: '000',
-                cardType: 'VISA',
-                role: 'USER',
-                username: session.user.email?.split('@')[0] || 'user',
-                password: '',
-                isLocked: false,
-                lockReason: undefined,
-                lockDate: undefined,
-                failedAttempts: 0,
-                failedPasswordAttempts: 0,
-                lastPasswordAttempt: undefined,
-                createdAt: new Date().toISOString(),
-                lastLogin: undefined,
-                creditScore: undefined,
-                monthlyIncome: undefined,
-                passwordLastChanged: undefined,
-                mustChangePassword: false
-              });
+              setCurrentUser(createFallbackUser(session));
               setIsAuthenticated(true);
             } finally {
               setLoading(false);
@@ -120,13 +118,10 @@ export function SupabaseATMProvider({ children }: { children: ReactNode }) {
           setInitialized(true);
         } else if (event === 'TOKEN_REFRESHED') {
           console.log('🔄 Token refreshed');
-          // Don't change loading state on token refresh
         }
       }
     );
 
-    // Check for existing session
-    console.log('🔍 Checking for existing session...');
     supabase.auth.getSession().then(({ data: { session }, error }) => {
       if (error) {
         console.error('❌ Error getting session:', error);
@@ -141,34 +136,7 @@ export function SupabaseATMProvider({ children }: { children: ReactNode }) {
         console.log('✅ Found existing session, refreshing user...');
         refreshUser().catch((error) => {
           console.error('❌ Error refreshing user on initial load:', error);
-          // Fallback to basic user info if refresh fails
-          setCurrentUser({
-            id: session.user.id,
-            name: session.user.email || 'User',
-            email: session.user.email || '',
-            accountNumber: '0000000000',
-            balance: 0,
-            pin: '0000',
-            cardNumber: '0000000000000000',
-            expiryDate: '00/00',
-            cvv: '000',
-            cardType: 'VISA',
-            role: 'USER',
-            username: session.user.email?.split('@')[0] || 'user',
-            password: '',
-            isLocked: false,
-            lockReason: undefined,
-            lockDate: undefined,
-            failedAttempts: 0,
-            failedPasswordAttempts: 0,
-            lastPasswordAttempt: undefined,
-            createdAt: new Date().toISOString(),
-            lastLogin: undefined,
-            creditScore: undefined,
-            monthlyIncome: undefined,
-            passwordLastChanged: undefined,
-            mustChangePassword: false
-          });
+          setCurrentUser(createFallbackUser(session));
           setIsAuthenticated(true);
         }).finally(() => {
           console.log('🏁 Setting loading to false after session check');
@@ -188,7 +156,6 @@ export function SupabaseATMProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  // Debug current state
   console.log('🔍 Current auth state:', {
     loading,
     isAuthenticated,
