@@ -16,7 +16,9 @@ import {
   registerServiceWorker, 
   requestNotificationPermission, 
   checkInstallPrompt,
-  onConnectionChange 
+  onConnectionChange,
+  showOfflineToast,
+  showOnlineToast
 } from './utils/pwaUtils';
 
 const queryClient = new QueryClient({
@@ -113,40 +115,36 @@ const App: React.FC = () => {
   
   useEffect(() => {
     // Initialize PWA features
-    registerServiceWorker();
-    requestNotificationPermission();
-    checkInstallPrompt();
-    
-    // Monitor connection status
-    onConnectionChange((isOnline) => {
-      console.log('Connection status changed:', isOnline ? 'Online' : 'Offline');
-      
-      if (!isOnline) {
-        // Show offline notification
-        const offlineToast = document.createElement('div');
-        offlineToast.className = 'fixed top-4 right-4 bg-yellow-600 text-white px-4 py-2 rounded-lg shadow-lg z-50';
-        offlineToast.textContent = 'You are now offline. Some features may be limited.';
-        document.body.appendChild(offlineToast);
+    const initializePWA = async () => {
+      try {
+        await registerServiceWorker();
+        await requestNotificationPermission();
+        checkInstallPrompt();
         
-        setTimeout(() => {
-          if (offlineToast.parentNode) {
-            offlineToast.remove();
+        // Monitor connection status
+        const cleanup = onConnectionChange((isOnline) => {
+          console.log('Connection status changed:', isOnline ? 'Online' : 'Offline');
+          
+          if (!isOnline) {
+            showOfflineToast();
+          } else {
+            showOnlineToast();
           }
-        }, 5000);
-      } else {
-        // Show online notification
-        const onlineToast = document.createElement('div');
-        onlineToast.className = 'fixed top-4 right-4 bg-green-600 text-white px-4 py-2 rounded-lg shadow-lg z-50';
-        onlineToast.textContent = 'Connection restored. All features are available.';
-        document.body.appendChild(onlineToast);
-        
-        setTimeout(() => {
-          if (onlineToast.parentNode) {
-            onlineToast.remove();
-          }
-        }, 3000);
+        });
+
+        return cleanup;
+      } catch (error) {
+        console.error('Error initializing PWA features:', error);
       }
-    });
+    };
+
+    const cleanup = initializePWA();
+    
+    return () => {
+      if (cleanup && typeof cleanup === 'function') {
+        cleanup();
+      }
+    };
   }, []);
   
   return (
