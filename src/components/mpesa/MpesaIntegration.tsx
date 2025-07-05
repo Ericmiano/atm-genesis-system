@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { mpesaService } from '@/services/mpesaService';
+import { MpesaService } from '@/services/mpesaService';
 import { useSupabaseATM } from '@/contexts/SupabaseATMContext';
 import { toast } from '@/hooks/use-toast';
 
@@ -55,7 +55,7 @@ const MpesaIntegration: React.FC<MpesaIntegrationProps> = ({ onClose }) => {
 
     setLoading(true);
     try {
-      const result = await mpesaService.sendMoney(
+      const result = await MpesaService.sendMoney(
         currentUser.id,
         sendMoneyForm.recipient,
         parseFloat(sendMoneyForm.amount)
@@ -91,7 +91,7 @@ const MpesaIntegration: React.FC<MpesaIntegrationProps> = ({ onClose }) => {
 
     setLoading(true);
     try {
-      const result = await mpesaService.payBill(
+      const result = await MpesaService.payBill(
         currentUser.id,
         payBillForm.businessNumber,
         parseFloat(payBillForm.amount)
@@ -127,7 +127,7 @@ const MpesaIntegration: React.FC<MpesaIntegrationProps> = ({ onClose }) => {
 
     setLoading(true);
     try {
-      const result = await mpesaService.buyGoods(
+      const result = await MpesaService.buyGoods(
         currentUser.id,
         buyGoodsForm.tillNumber,
         parseFloat(buyGoodsForm.amount)
@@ -163,7 +163,7 @@ const MpesaIntegration: React.FC<MpesaIntegrationProps> = ({ onClose }) => {
 
     setLoading(true);
     try {
-      const result = await mpesaService.buyAirtime(
+      const result = await MpesaService.buyAirtime(
         currentUser.id,
         airtimeForm.phoneNumber,
         parseFloat(airtimeForm.amount)
