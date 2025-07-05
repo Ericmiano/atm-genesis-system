@@ -13,10 +13,15 @@ import {
     ArrowDownRight,
     Eye,
     EyeOff,
-    RefreshCw
+    RefreshCw,
+    Wallet,
+    Shield,
+    Zap
 } from 'lucide-react';
+import { useEnhancedTheme } from '../../contexts/EnhancedThemeContext';
 import { CreditScoreService } from '../../services/creditScoreService';
 import { OverdraftService } from '../../services/overdraftService';
+import { cn } from '@/lib/utils';
 
 interface OverviewScreenProps {
     stats: {
@@ -27,6 +32,7 @@ interface OverviewScreenProps {
 }
 
 const OverviewScreen: React.FC<OverviewScreenProps> = ({ stats, currentUser }) => {
+    const { isDarkMode } = useEnhancedTheme();
     const [creditScore, setCreditScore] = useState(400);
     const [overdraftLimit, setOverdraftLimit] = useState(50000);
     const [overdraftUsed, setOverdraftUsed] = useState(0);
@@ -81,10 +87,10 @@ const OverviewScreen: React.FC<OverviewScreenProps> = ({ stats, currentUser }) =
     }, [currentUser]);
 
     const getCreditScoreColor = (score: number) => {
-        if (score >= 750) return 'credit-score-excellent';
-        if (score >= 650) return 'credit-score-good';
-        if (score >= 550) return 'credit-score-fair';
-        return 'credit-score-poor';
+        if (score >= 750) return 'text-success border-success/20 bg-success/10';
+        if (score >= 650) return 'text-primary border-primary/20 bg-primary/10';
+        if (score >= 550) return 'text-warning border-warning/20 bg-warning/10';
+        return 'text-error border-error/20 bg-error/10';
     };
 
     const getCreditScoreLabel = (score: number) => {
@@ -100,7 +106,7 @@ const OverviewScreen: React.FC<OverviewScreenProps> = ({ stats, currentUser }) =
     if (loading) {
         return (
             <div className="flex items-center justify-center h-64">
-                <RefreshCw className="w-8 h-8 animate-spin text-blue-500" />
+                <RefreshCw className="w-8 h-8 animate-spin text-primary" />
             </div>
         );
     }
@@ -108,183 +114,286 @@ const OverviewScreen: React.FC<OverviewScreenProps> = ({ stats, currentUser }) =
     return (
         <div className="space-y-6 animate-fade-in">
             {/* Welcome Section */}
-            <div className="card-modern p-6">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h1 className="text-2xl font-bold text-[#F1F1F1] mb-2">
-                            Welcome back, {currentUser?.name || 'User'}! 👋
-                        </h1>
-                        <p className="text-gray-400">
-                            Here's your financial overview for today
-                        </p>
+            <Card className={cn(
+                "transition-all duration-300 hover:shadow-lg",
+                isDarkMode 
+                    ? "bg-dark-surface border-dark-border/20" 
+                    : "bg-white border-neutral-200/50 shadow-sm"
+            )}>
+                <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-4">
+                            <div className={cn(
+                                "w-12 h-12 rounded-xl flex items-center justify-center text-white shadow-lg",
+                                "bg-gradient-to-br from-primary to-secondary"
+                            )}>
+                                <Wallet className="w-6 h-6" />
+                            </div>
+                            <div>
+                                <h1 className={cn(
+                                    "text-2xl font-bold mb-2 transition-colors duration-300",
+                                    isDarkMode ? "text-white" : "text-neutral-900"
+                                )}>
+                                    Welcome back, {currentUser?.name || 'User'}! 👋
+                                </h1>
+                                <p className={cn(
+                                    "transition-colors duration-300",
+                                    isDarkMode ? "text-muted-foreground" : "text-neutral-600"
+                                )}>
+                                    Here's your financial overview for today
+                                </p>
+                            </div>
+                        </div>
+                        <div className="text-right">
+                            <p className={cn(
+                                "text-sm transition-colors duration-300",
+                                isDarkMode ? "text-muted-foreground" : "text-neutral-500"
+                            )}>
+                                Last updated
+                            </p>
+                            <p className={cn(
+                                "text-sm font-medium transition-colors duration-300",
+                                isDarkMode ? "text-white" : "text-neutral-900"
+                            )}>
+                                {new Date().toLocaleTimeString()}
+                            </p>
+                        </div>
                     </div>
-                    <div className="text-right">
-                        <p className="text-sm text-gray-400">Last updated</p>
-                        <p className="text-sm text-[#F1F1F1]">
-                            {new Date().toLocaleTimeString()}
-                        </p>
-                    </div>
-                </div>
-            </div>
+                </CardContent>
+            </Card>
 
             {/* Main Stats Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 {/* Account Balance */}
-                <Card className="stat-card primary">
+                <Card className={cn(
+                    "transition-all duration-300 hover:shadow-lg hover:scale-[1.02]",
+                    isDarkMode 
+                        ? "bg-dark-surface border-dark-border/20" 
+                        : "bg-white border-neutral-200/50 shadow-sm"
+                )}>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium text-[#F1F1F1]">
+                        <CardTitle className={cn(
+                            "text-sm font-medium transition-colors duration-300",
+                            isDarkMode ? "text-white" : "text-neutral-900"
+                        )}>
                             Account Balance
                         </CardTitle>
                         <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => setShowBalance(!showBalance)}
-                            className="btn-ghost p-1"
+                            className={cn(
+                                "p-1 rounded-lg transition-all duration-300",
+                                "hover:bg-muted/50 hover:scale-105"
+                            )}
                         >
                             {showBalance ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                         </Button>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold text-[#F1F1F1] animate-counter">
+                        <div className={cn(
+                            "text-2xl font-bold transition-colors duration-300",
+                            isDarkMode ? "text-white" : "text-neutral-900"
+                        )}>
                             {showBalance ? `KES ${balance.toLocaleString()}` : '••••••'}
                         </div>
-                        <p className="text-xs text-gray-400 mt-1">
+                        <p className={cn(
+                            "text-xs mt-1 transition-colors duration-300",
+                            isDarkMode ? "text-muted-foreground" : "text-neutral-500"
+                        )}>
                             Available for transactions
                         </p>
                     </CardContent>
                 </Card>
 
                 {/* Credit Score */}
-                <Card className="stat-card success">
+                <Card className={cn(
+                    "transition-all duration-300 hover:shadow-lg hover:scale-[1.02]",
+                    isDarkMode 
+                        ? "bg-dark-surface border-dark-border/20" 
+                        : "bg-white border-neutral-200/50 shadow-sm"
+                )}>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium text-[#F1F1F1]">
+                        <CardTitle className={cn(
+                            "text-sm font-medium transition-colors duration-300",
+                            isDarkMode ? "text-white" : "text-neutral-900"
+                        )}>
                             Credit Score
                         </CardTitle>
-                        <Target className="w-4 h-4 text-green-400" />
+                        <Target className="w-4 h-4 text-success" />
                     </CardHeader>
                     <CardContent>
                         <div className="flex items-center gap-2">
-                            <div className={`text-2xl font-bold px-3 py-1 rounded-lg ${getCreditScoreColor(creditScore)}`}>
+                            <div className={cn(
+                                "text-2xl font-bold px-3 py-1 rounded-lg border",
+                                getCreditScoreColor(creditScore)
+                            )}>
                                 {creditScore}
                             </div>
-                            <Badge className={`badge-${getCreditScoreLabel(creditScore).toLowerCase()}`}>
+                            <Badge className={cn(
+                                "text-xs font-medium",
+                                getCreditScoreColor(creditScore)
+                            )}>
                                 {getCreditScoreLabel(creditScore)}
                             </Badge>
                         </div>
-                        <p className="text-xs text-gray-400 mt-1">
+                        <p className={cn(
+                            "text-xs mt-1 transition-colors duration-300",
+                            isDarkMode ? "text-muted-foreground" : "text-neutral-500"
+                        )}>
                             Based on payment history
                         </p>
                     </CardContent>
                 </Card>
 
                 {/* Overdraft Protection */}
-                <Card className="stat-card warning">
+                <Card className={cn(
+                    "transition-all duration-300 hover:shadow-lg hover:scale-[1.02]",
+                    isDarkMode 
+                        ? "bg-dark-surface border-dark-border/20" 
+                        : "bg-white border-neutral-200/50 shadow-sm"
+                )}>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium text-[#F1F1F1]">
+                        <CardTitle className={cn(
+                            "text-sm font-medium transition-colors duration-300",
+                            isDarkMode ? "text-white" : "text-neutral-900"
+                        )}>
                             Overdraft Protection
                         </CardTitle>
-                        <AlertCircle className="w-4 h-4 text-yellow-400" />
+                        <Shield className="w-4 h-4 text-warning" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold text-[#F1F1F1]">
+                        <div className={cn(
+                            "text-2xl font-bold transition-colors duration-300",
+                            isDarkMode ? "text-white" : "text-neutral-900"
+                        )}>
                             KES {overdraftRemaining.toLocaleString()}
                         </div>
                         <div className="flex items-center gap-2 mt-1">
-                            <div className="flex-1 bg-gray-700 rounded-full h-2">
+                            <div className={cn(
+                                "flex-1 rounded-full h-2 transition-colors duration-300",
+                                isDarkMode ? "bg-neutral-700" : "bg-neutral-200"
+                            )}>
                                 <div 
-                                    className="bg-gradient-to-r from-yellow-500 to-orange-500 h-2 rounded-full transition-all duration-300"
+                                    className="bg-gradient-to-r from-warning to-accent h-2 rounded-full transition-all duration-300"
                                     style={{ width: `${Math.min(overdraftPercentage, 100)}%` }}
                                 ></div>
                             </div>
-                            <span className="text-xs text-gray-400">
+                            <span className={cn(
+                                "text-xs transition-colors duration-300",
+                                isDarkMode ? "text-muted-foreground" : "text-neutral-500"
+                            )}>
                                 {overdraftPercentage.toFixed(0)}%
                             </span>
                         </div>
-                        <p className="text-xs text-gray-400 mt-1">
-                            {overdraftUsed.toLocaleString()} used of {overdraftLimit.toLocaleString()}
-                        </p>
                     </CardContent>
                 </Card>
 
-                {/* Monthly Expenses */}
-                <Card className="stat-card">
+                {/* Quick Actions */}
+                <Card className={cn(
+                    "transition-all duration-300 hover:shadow-lg hover:scale-[1.02]",
+                    isDarkMode 
+                        ? "bg-dark-surface border-dark-border/20" 
+                        : "bg-white border-neutral-200/50 shadow-sm"
+                )}>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium text-[#F1F1F1]">
-                            This Month's Expenses
+                        <CardTitle className={cn(
+                            "text-sm font-medium transition-colors duration-300",
+                            isDarkMode ? "text-white" : "text-neutral-900"
+                        )}>
+                            Quick Actions
                         </CardTitle>
-                        <TrendingDown className="w-4 h-4 text-red-400" />
+                        <Zap className="w-4 h-4 text-accent" />
                     </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold text-[#F1F1F1]">
-                            KES 45,200
-                        </div>
-                        <div className="flex items-center gap-1 mt-1">
-                            <ArrowDownRight className="w-4 h-4 text-red-400" />
-                            <span className="text-xs text-red-400">-12%</span>
-                            <span className="text-xs text-gray-400">from last month</span>
-                        </div>
+                    <CardContent className="space-y-2">
+                        <Button className={cn(
+                            "w-full transition-all duration-300 hover:scale-[1.02]",
+                            "bg-gradient-to-r from-primary to-secondary text-white shadow-lg",
+                            "hover:shadow-xl hover:shadow-primary/25"
+                        )}>
+                            Send Money
+                        </Button>
+                        <Button variant="outline" className={cn(
+                            "w-full transition-all duration-300 hover:scale-[1.02]",
+                            "border-secondary/20 text-secondary hover:bg-secondary/10"
+                        )}>
+                            Pay Bills
+                        </Button>
                     </CardContent>
                 </Card>
             </div>
 
             {/* Recent Transactions */}
-            <Card className="card-modern">
+            <Card className={cn(
+                "transition-all duration-300 hover:shadow-lg",
+                isDarkMode 
+                    ? "bg-dark-surface border-dark-border/20" 
+                    : "bg-white border-neutral-200/50 shadow-sm"
+            )}>
                 <CardHeader>
-                    <CardTitle className="text-lg font-bold text-[#F1F1F1]">
+                    <CardTitle className={cn(
+                        "transition-colors duration-300",
+                        isDarkMode ? "text-white" : "text-neutral-900"
+                    )}>
                         Recent Transactions
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <div className="space-y-4">
-                        {stats.recentTransactions.length > 0 ? (
-                            stats.recentTransactions.map((transaction, index) => (
-                                <div key={index} className="flex items-center justify-between p-3 rounded-xl hover:bg-gray-800/50 transition-colors">
-                                    <div className="flex items-center gap-3">
-                                        <div className={`p-2 rounded-lg ${
-                                            transaction.type === 'credit' 
-                                                ? 'bg-green-500/20 text-green-400' 
-                                                : 'bg-red-500/20 text-red-400'
-                                        }`}>
-                                            {transaction.type === 'credit' ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
-                                        </div>
-                                        <div>
-                                            <p className="text-sm font-medium text-[#F1F1F1]">
-                                                {transaction.description || 'Transaction'}
-                                            </p>
-                                            <p className="text-xs text-gray-400">
-                                                {transaction.date instanceof Date 
-                                                    ? transaction.date.toLocaleDateString() 
-                                                    : transaction.date 
-                                                        ? new Date(transaction.date).toLocaleDateString()
-                                                        : new Date().toLocaleDateString()}
-                                            </p>
-                                        </div>
+                    <div className="space-y-3">
+                        {stats.recentTransactions.map((transaction, index) => (
+                            <div key={index} className={cn(
+                                "flex items-center justify-between p-3 rounded-xl transition-all duration-300",
+                                "hover:shadow-md hover:scale-[1.01]",
+                                isDarkMode 
+                                    ? "bg-dark-surface/50 hover:bg-dark-surface" 
+                                    : "bg-neutral-50 hover:bg-neutral-100"
+                            )}>
+                                <div className="flex items-center space-x-3">
+                                    <div className={cn(
+                                        "w-8 h-8 rounded-lg flex items-center justify-center",
+                                        transaction.type === 'credit' 
+                                            ? "bg-success/10 text-success" 
+                                            : "bg-error/10 text-error"
+                                    )}>
+                                        {transaction.type === 'credit' ? (
+                                            <ArrowUpRight className="w-4 h-4" />
+                                        ) : (
+                                            <ArrowDownRight className="w-4 h-4" />
+                                        )}
                                     </div>
-                                    <div className="text-right">
-                                        <p className={`text-sm font-medium ${
-                                            transaction.type === 'credit' ? 'text-green-400' : 'text-red-400'
-                                        }`}>
-                                            {transaction.type === 'credit' ? '+' : '-'} KES {transaction.amount?.toLocaleString() || '0'}
+                                    <div>
+                                        <p className={cn(
+                                            "font-medium transition-colors duration-300",
+                                            isDarkMode ? "text-white" : "text-neutral-900"
+                                        )}>
+                                            {transaction.description}
                                         </p>
-                                        <Badge className={`text-xs ${
-                                            transaction.status === 'completed' ? 'badge-success' : 'badge-warning'
-                                        }`}>
-                                            {transaction.status || 'pending'}
-                                        </Badge>
+                                        <p className={cn(
+                                            "text-xs transition-colors duration-300",
+                                            isDarkMode ? "text-muted-foreground" : "text-neutral-500"
+                                        )}>
+                                            {new Date(transaction.date).toLocaleDateString()}
+                                        </p>
                                     </div>
                                 </div>
-                            ))
-                        ) : (
-                            <div className="text-center py-8">
-                                <CreditCard className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                                <p className="text-gray-400">No recent transactions</p>
+                                <div className="text-right">
+                                    <p className={cn(
+                                        "font-semibold transition-colors duration-300",
+                                        transaction.type === 'credit' ? "text-success" : "text-error"
+                                    )}>
+                                        {transaction.type === 'credit' ? '+' : '-'} KES {transaction.amount.toLocaleString()}
+                                    </p>
+                                    <Badge className={cn(
+                                        "text-xs",
+                                        transaction.status === 'completed' 
+                                            ? "bg-success/10 text-success border-success/20" 
+                                            : "bg-warning/10 text-warning border-warning/20"
+                                    )}>
+                                        {transaction.status}
+                                    </Badge>
+                                </div>
                             </div>
-                        )}
-                    </div>
-                    <div className="mt-4 pt-4 border-t border-gray-700">
-                        <Button variant="ghost" className="w-full btn-ghost">
-                            View All Transactions
-                        </Button>
+                        ))}
                     </div>
                 </CardContent>
             </Card>

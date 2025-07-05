@@ -1,7 +1,7 @@
-
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSupabaseATM } from '../../contexts/SupabaseATMContext';
+import { useEnhancedTheme } from '../../contexts/EnhancedThemeContext';
 import DashboardSidebar from './DashboardSidebar';
 import DashboardTopBar from './DashboardTopBar';
 
@@ -27,9 +27,14 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   onShowQRCode,
 }) => {
   const { currentUser, logout } = useSupabaseATM();
+  const { isDarkMode } = useEnhancedTheme();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#1A237E] to-[#151C66] text-[#F1F1F1] transition-all duration-300">
+    <div className={`min-h-screen transition-all duration-300 ${
+      isDarkMode 
+        ? 'bg-gradient-to-br from-dark-primary via-dark-secondary to-dark-accent text-white' 
+        : 'bg-gradient-to-br from-neutral-50 via-white to-neutral-100 text-neutral-900'
+    }`}>
       {/* Mobile Sidebar Overlay */}
       <AnimatePresence>
         {isSidebarOpen && (
@@ -37,7 +42,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 lg:hidden"
             onClick={() => setIsSidebarOpen(false)}
           />
         )}
@@ -62,11 +67,16 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           />
 
           <main className="flex-1 p-4 lg:p-6 overflow-hidden">
-            <div className="animate-fade-in">
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+              className="h-full"
+            >
               <AnimatePresence mode="wait">
                 {children}
               </AnimatePresence>
-            </div>
+            </motion.div>
           </main>
         </div>
       </div>

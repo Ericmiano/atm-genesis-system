@@ -1,81 +1,75 @@
-
 import React from 'react';
-import { motion } from 'framer-motion';
-import { Sun, Moon, Monitor } from 'lucide-react';
-import { useEnhancedTheme } from '@/contexts/EnhancedThemeContext';
+import { useEnhancedTheme } from '../../contexts/EnhancedThemeContext';
 import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { Sun, Moon, Monitor } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 const ThemeToggle: React.FC = () => {
-  const { mode, setMode, isDarkMode } = useEnhancedTheme();
+  const { isDarkMode, toggleDarkMode, mode, setMode } = useEnhancedTheme();
 
   const themes = [
-    { value: 'light', label: 'Light', icon: Sun },
-    { value: 'dark', label: 'Dark', icon: Moon },
-    { value: 'auto', label: 'System', icon: Monitor },
-  ];
-
-  const currentTheme = themes.find(theme => theme.value === mode) || themes[1];
-  const CurrentIcon = currentTheme.icon;
+    { id: 'light', icon: Sun, label: 'Light' },
+    { id: 'dark', icon: Moon, label: 'Dark' },
+    { id: 'auto', icon: Monitor, label: 'Auto' }
+  ] as const;
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          size="sm"
-          className={`relative p-2 rounded-xl transition-all duration-300 ${
-            isDarkMode
-              ? 'bg-gray-800/50 hover:bg-gray-700/50 text-gray-300 hover:text-white'
-              : 'bg-gray-100/50 hover:bg-gray-200/50 text-gray-700 hover:text-gray-900'
-          }`}
-        >
-          <motion.div
-            initial={false}
-            animate={{ rotate: isDarkMode ? 180 : 0 }}
-            transition={{ duration: 0.3, ease: 'easeInOut' }}
+    <div className="flex items-center gap-2">
+      {themes.map((theme) => {
+        const Icon = theme.icon;
+        const isActive = mode === theme.id;
+        
+        return (
+          <Button
+            key={theme.id}
+            variant="ghost"
+            size="sm"
+            onClick={() => setMode(theme.id)}
+            className={cn(
+              "relative p-2 rounded-xl transition-all duration-300 group",
+              "hover:scale-105 hover:shadow-lg",
+              isActive 
+                ? cn(
+                    "bg-gradient-to-r from-primary/10 to-secondary/10",
+                    "border border-primary/20 text-primary font-semibold",
+                    "shadow-lg shadow-primary/10"
+                  )
+                : cn(
+                    "hover:bg-muted/50 text-muted-foreground hover:text-foreground"
+                  )
+            )}
+            title={`Switch to ${theme.label} mode`}
           >
-            <CurrentIcon className="w-4 h-4" />
-          </motion.div>
-          <span className="sr-only">Toggle theme</span>
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent 
-        align="end" 
-        className={`${
-          isDarkMode 
-            ? 'bg-gray-800/95 border-gray-700/50 text-gray-100' 
-            : 'bg-white/95 border-gray-200/50 text-gray-900'
-        } backdrop-blur-md shadow-xl`}
-      >
-        {themes.map((theme) => {
-          const Icon = theme.icon;
-          return (
-            <DropdownMenuItem
-              key={theme.value}
-              onClick={() => setMode(theme.value as any)}
-              className={`flex items-center gap-2 px-3 py-2 cursor-pointer transition-all duration-200 ${
-                mode === theme.value
-                  ? isDarkMode
-                    ? 'bg-blue-600/20 text-blue-400'
-                    : 'bg-blue-50 text-blue-600'
-                  : isDarkMode
-                    ? 'hover:bg-gray-700/50 text-gray-300 hover:text-white'
-                    : 'hover:bg-gray-100 text-gray-700 hover:text-gray-900'
-              }`}
-            >
+            <div className={cn(
+              "p-1.5 rounded-lg transition-colors duration-300",
+              isActive 
+                ? "bg-gradient-to-br from-primary to-secondary text-white shadow-lg" 
+                : "group-hover:bg-muted/50"
+            )}>
               <Icon className="w-4 h-4" />
-              <span className="text-sm font-medium">{theme.label}</span>
-            </DropdownMenuItem>
-          );
-        })}
-      </DropdownMenuContent>
-    </DropdownMenu>
+            </div>
+          </Button>
+        );
+      })}
+      
+      {/* Quick Toggle */}
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={toggleDarkMode}
+        className={cn(
+          "relative w-12 h-6 rounded-full p-0 transition-all duration-300",
+          "bg-gradient-to-r from-primary to-secondary shadow-lg",
+          "hover:scale-105 hover:shadow-xl"
+        )}
+        title="Quick toggle theme"
+      >
+        <div className={cn(
+          "absolute w-4 h-4 bg-white rounded-full transition-transform duration-300 shadow-md top-1",
+          isDarkMode ? "translate-x-7" : "translate-x-1"
+        )} />
+      </Button>
+    </div>
   );
 };
 

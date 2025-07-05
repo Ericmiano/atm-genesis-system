@@ -1,5 +1,9 @@
-
 import React from 'react';
+import { useEnhancedTheme } from '../../contexts/EnhancedThemeContext';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Smartphone, Fingerprint, QrCode } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface DashboardQuickActionsProps {
   onShowMpesa: () => void;
@@ -12,37 +16,72 @@ const DashboardQuickActions: React.FC<DashboardQuickActionsProps> = ({
   onShowBiometric,
   onShowQRCode,
 }) => {
+  const { isDarkMode } = useEnhancedTheme();
+
+  const actions = [
+    {
+      icon: Smartphone,
+      label: 'M-Pesa',
+      onClick: onShowMpesa,
+      color: 'primary',
+      badge: 'New'
+    },
+    {
+      icon: Fingerprint,
+      label: 'Biometric',
+      onClick: onShowBiometric,
+      color: 'secondary'
+    },
+    {
+      icon: QrCode,
+      label: 'QR Code',
+      onClick: onShowQRCode,
+      color: 'accent'
+    }
+  ];
+
   return (
     <div className="flex items-center gap-2">
-      <button
-        onClick={onShowMpesa}
-        className="p-2 rounded-full hover:bg-white/10 text-white transition-colors"
-        title="M-Pesa Services"
-      >
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
-        </svg>
-      </button>
-      
-      <button
-        onClick={onShowBiometric}
-        className="p-2 rounded-full hover:bg-white/10 text-white transition-colors"
-        title="Biometric Auth"
-      >
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-        </svg>
-      </button>
-      
-      <button
-        onClick={onShowQRCode}
-        className="p-2 rounded-full hover:bg-white/10 text-white transition-colors"
-        title="QR Payment"
-      >
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
-        </svg>
-      </button>
+      {actions.map((action, index) => {
+        const Icon = action.icon;
+        return (
+          <div key={index} className="relative">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={action.onClick}
+              className={cn(
+                "p-2 rounded-xl transition-all duration-300 group",
+                "hover:scale-105 hover:shadow-lg",
+                isDarkMode 
+                  ? "hover:bg-dark-surface/50" 
+                  : "hover:bg-neutral-100"
+              )}
+              title={action.label}
+            >
+              <div className={cn(
+                "p-1.5 rounded-lg transition-colors duration-300",
+                isDarkMode 
+                  ? "group-hover:bg-dark-surface" 
+                  : "group-hover:bg-neutral-200"
+              )}>
+                <Icon className={cn(
+                  "w-4 h-4 transition-colors duration-300",
+                  isDarkMode ? "text-muted-foreground" : "text-neutral-600"
+                )} />
+              </div>
+            </Button>
+            {action.badge && (
+              <Badge className={cn(
+                "absolute -top-1 -right-1 px-1.5 py-0.5 text-xs font-medium",
+                "bg-gradient-to-r from-primary to-secondary text-white"
+              )}>
+                {action.badge}
+              </Badge>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 };

@@ -1,4 +1,3 @@
-
 import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -41,7 +40,7 @@ const AppContent: React.FC = () => {
     // Show enhanced loading spinner while initializing
     if (loading || !initialized) {
       return (
-        <div className="min-h-screen bg-[#0E0E0E] flex items-center justify-center">
+        <div className="min-h-screen bg-gradient-to-br from-neutral-50 via-white to-neutral-100 dark:from-dark-primary dark:via-dark-secondary dark:to-dark-accent flex items-center justify-center transition-all duration-300">
           <EnhancedLoadingSpinner 
             size="xl" 
             variant="banking" 
@@ -81,7 +80,7 @@ const AppContent: React.FC = () => {
         {({ user, loading, initialized }) => {
           if (loading || !initialized) {
             return (
-              <div className="min-h-screen bg-[#0E0E0E] flex items-center justify-center">
+              <div className="min-h-screen bg-gradient-to-br from-neutral-50 via-white to-neutral-100 dark:from-dark-primary dark:via-dark-secondary dark:to-dark-accent flex items-center justify-center transition-all duration-300">
                 <EnhancedLoadingSpinner 
                   size="xl" 
                   variant="secure" 
