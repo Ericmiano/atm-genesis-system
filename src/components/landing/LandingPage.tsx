@@ -1,15 +1,17 @@
-
 import React from 'react';
 import { motion } from 'framer-motion';
 import { ArrowRight, Download, Shield, Zap, Users, Star, CheckCircle, Phone, Mail, MapPin } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 
 const LandingPage = () => {
+  const navigate = useNavigate();
+
   const features = [
     {
       icon: <Zap className="w-8 h-8 text-[#FFD600]" />,
-      title: "M-Pesa Integration",
+      title: "M-Pesa Integration", 
       description: "Seamless money transfers, bill payments, and airtime purchases through M-Pesa"
     },
     {
@@ -26,7 +28,7 @@ const LandingPage = () => {
 
   const benefits = [
     "Lightning-fast transactions in under 30 seconds",
-    "24/7 customer support and banking access",
+    "24/7 customer support and banking access", 
     "Zero maintenance fees for basic accounts",
     "Advanced security with biometric verification",
     "Instant loan approvals with AI-powered credit scoring",
@@ -40,7 +42,7 @@ const LandingPage = () => {
       description: "Sign up with your National ID and complete KYC verification"
     },
     {
-      step: "02",
+      step: "02", 
       title: "Verify",
       description: "Upload documents and complete biometric verification"
     },
@@ -60,7 +62,7 @@ const LandingPage = () => {
     },
     {
       name: "John Kamau",
-      role: "Freelancer",
+      role: "Freelancer", 
       content: "Got my loan approved in minutes. The mobile app is incredibly user-friendly.",
       rating: 5
     },
@@ -109,7 +111,10 @@ const LandingPage = () => {
               <a href="#products" className="hover:text-[#FFD600] transition-colors">Products</a>
               <a href="#loans" className="hover:text-[#FFD600] transition-colors">Loans</a>
               <a href="#contact" className="hover:text-[#FFD600] transition-colors">Contact</a>
-              <Button className="bg-[#FF4081] hover:bg-[#CC3368] text-white">
+              <Button 
+                onClick={() => navigate('/login')}
+                className="bg-[#FF4081] hover:bg-[#CC3368] text-white"
+              >
                 Sign In
               </Button>
             </div>
@@ -137,11 +142,20 @@ const LandingPage = () => {
                 and secure transactions. Built specifically for Kenyan needs.
               </p>
               <div className="flex flex-col sm:flex-row gap-4">
-                <Button size="lg" className="bg-[#FFD600] hover:bg-[#CCAD00] text-[#1A237E] font-semibold">
+                <Button 
+                  size="lg" 
+                  onClick={() => navigate('/signup')}
+                  className="bg-[#FFD600] hover:bg-[#CCAD00] text-[#1A237E] font-semibold"
+                >
                   Get Started <ArrowRight className="ml-2 w-5 h-5" />
                 </Button>
-                <Button size="lg" variant="outline" className="border-white text-white hover:bg-white hover:text-[#1A237E]">
-                  <Download className="mr-2 w-5 h-5" /> Download App
+                <Button 
+                  size="lg" 
+                  variant="outline" 
+                  onClick={() => navigate('/login')}
+                  className="border-white text-white hover:bg-white hover:text-[#1A237E]"
+                >
+                  Sign In
                 </Button>
               </div>
             </motion.div>
@@ -331,11 +345,19 @@ const LandingPage = () => {
             <h2 className="text-4xl font-bold mb-6 text-white">Ready to Transform Your Banking?</h2>
             <p className="text-xl mb-8 text-white/90">Join thousands of satisfied customers today</p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button size="lg" className="bg-white text-[#1A237E] hover:bg-gray-100 font-semibold">
-                <Download className="mr-2 w-5 h-5" /> Download for iOS
+              <Button 
+                size="lg" 
+                onClick={() => navigate('/signup')}
+                className="bg-white text-[#1A237E] hover:bg-gray-100 font-semibold"
+              >
+                Create Account
               </Button>
-              <Button size="lg" className="bg-white text-[#1A237E] hover:bg-gray-100 font-semibold">
-                <Download className="mr-2 w-5 h-5" /> Download for Android
+              <Button 
+                size="lg" 
+                onClick={() => navigate('/login')}
+                className="bg-white text-[#1A237E] hover:bg-gray-100 font-semibold"
+              >
+                Sign In Now
               </Button>
             </div>
           </motion.div>

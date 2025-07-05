@@ -56,7 +56,7 @@ const AppContent: React.FC = () => {
       return <Dashboard />;
     }
 
-    // Show auth screen for non-authenticated users (this will be routed properly)
+    // Show routing for non-authenticated users
     return (
       <Router>
         <Routes>
@@ -64,6 +64,9 @@ const AppContent: React.FC = () => {
           <Route path="/signup" element={<SignupForm />} />
           <Route path="/products" element={<ProductsPage />} />
           <Route path="/login" element={<AuthScreen onAuthSuccess={() => {
+            console.log('Auth success, user should be redirected automatically');
+          }} />} />
+          <Route path="/auth" element={<AuthScreen onAuthSuccess={() => {
             console.log('Auth success, user should be redirected automatically');
           }} />} />
         </Routes>
@@ -99,6 +102,9 @@ const AppContent: React.FC = () => {
                 <Route path="/signup" element={<SignupForm />} />
                 <Route path="/products" element={<ProductsPage />} />
                 <Route path="/login" element={<AuthScreen onAuthSuccess={() => {
+                  console.log('Auth success via fallback');
+                }} />} />
+                <Route path="/auth" element={<AuthScreen onAuthSuccess={() => {
                   console.log('Auth success via fallback');
                 }} />} />
               </Routes>
@@ -139,16 +145,15 @@ const App: React.FC = () => {
       }
     };
 
-    const initCleanup = initializePWA();
+    let cleanup: (() => void) | undefined;
+    
+    initializePWA().then((cleanupFn) => {
+      cleanup = cleanupFn;
+    });
     
     return () => {
-      // Handle cleanup properly
-      if (initCleanup && typeof initCleanup.then === 'function') {
-        initCleanup.then((cleanup) => {
-          if (cleanup && typeof cleanup === 'function') {
-            cleanup();
-          }
-        });
+      if (cleanup && typeof cleanup === 'function') {
+        cleanup();
       }
     };
   }, []);

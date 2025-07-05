@@ -6,7 +6,6 @@ import { useEnhancedTheme } from '../contexts/EnhancedThemeContext';
 import { SecurityProvider } from '../contexts/SecurityContext';
 import { realTimeService } from '../services/realTimeService';
 import EnhancedSidebar from './dashboard/EnhancedSidebar';
-import EnhancedTopNavBar from './dashboard/EnhancedTopNavBar';
 import OverviewScreen from './dashboard/OverviewScreen';
 import TransactionsScreen from './dashboard/TransactionsScreen';
 import LoansScreen from './dashboard/LoansScreen';
@@ -19,17 +18,17 @@ import AccessibilitySettings from './accessibility/AccessibilitySettings';
 import SecuritySettings from './accessibility/SecuritySettings';
 import NotificationBell from './notifications/NotificationBell';
 import PresenceIndicator from './presence/PresenceIndicator';
-import VoiceCommands from './advanced/VoiceCommands';
 import BiometricAuth from './advanced/BiometricAuth';
 import QRPayment from './advanced/QRPayment';
+import MpesaIntegration from './mpesa/MpesaIntegration';
 
 const Dashboard: React.FC = () => {
   const [activeScreen, setActiveScreen] = useState('overview');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [showBiometric, setShowBiometric] = useState(false);
   const [showQRCode, setShowQRCode] = useState(false);
+  const [showMpesa, setShowMpesa] = useState(false);
   const [qrMode, setQrMode] = useState<'generate' | 'scan'>('scan');
-  const [voiceEnabled, setVoiceEnabled] = useState(true);
   const { currentUser, logout } = useSupabaseATM();
   const { isDarkMode, toggleDarkMode } = useEnhancedTheme();
 
@@ -118,9 +117,7 @@ const Dashboard: React.FC = () => {
     // Initialize real-time services
     if (currentUser) {
       // Subscribe to transaction updates
-      realTimeService.subscribeToTransactionUpdates(currentUser.id, (data) => {
-        console.log('Transaction update:', data);
-      });
+      realTimeService.subscribeToTransactions(currentUser.id);
       
       // Subscribe to security events
       realTimeService.subscribeToSecurityEvents(currentUser.id, (event) => {
@@ -218,6 +215,12 @@ const Dashboard: React.FC = () => {
             <TransactionsScreen transactions={mockTransactions} onTransactionSuccess={handleTransactionSuccess} />
           </motion.div>
         );
+      case 'mpesa':
+        return (
+          <motion.div key="mpesa" variants={screenVariants} initial="hidden" animate="visible" exit="exit">
+            <MpesaIntegration />
+          </motion.div>
+        );
       case 'loans':
         return (
           <motion.div key="loans" variants={screenVariants} initial="hidden" animate="visible" exit="exit">
@@ -277,7 +280,7 @@ const Dashboard: React.FC = () => {
 
   return (
     <SecurityProvider>
-      <div className="min-h-screen bg-[#0E0E0E] text-[#F1F1F1] transition-all duration-300">
+      <div className="min-h-screen bg-gradient-to-br from-[#1A237E] to-[#151C66] text-[#F1F1F1] transition-all duration-300">
         {/* Mobile Sidebar Overlay */}
         <AnimatePresence>
           {isSidebarOpen && (
@@ -308,14 +311,14 @@ const Dashboard: React.FC = () => {
           {/* Main Content */}
           <div className="flex-1 flex flex-col min-w-0">
             {/* Top Navigation */}
-            <div className="bg-gray-800/80 backdrop-blur-md border-b border-gray-700/50 sticky top-0 z-50">
+            <div className="bg-white/10 backdrop-blur-md border-b border-white/20 sticky top-0 z-50">
               <div className="flex items-center justify-between h-16 px-4 lg:px-6">
                 {/* Left Side */}
                 <div className="flex items-center gap-4">
                   {/* Mobile Menu Toggle */}
                   <button
                     onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                    className="lg:hidden p-2 rounded-md hover:bg-gray-700/50 text-gray-300"
+                    className="lg:hidden p-2 rounded-md hover:bg-white/10 text-white"
                   >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
@@ -324,8 +327,8 @@ const Dashboard: React.FC = () => {
 
                   {/* Welcome Message */}
                   <div className="hidden md:block">
-                    <h1 className="text-2xl font-bold text-[#F1F1F1]">Dashboard</h1>
-                    <p className="text-gray-400">Welcome back, {currentUser?.name || 'Alex Johnson'}</p>
+                    <h1 className="text-2xl font-bold text-[#FFD600]">ATM Genesis</h1>
+                    <p className="text-white/80">Welcome back, {currentUser?.name || 'Alex Johnson'}</p>
                   </div>
                 </div>
 
@@ -340,8 +343,18 @@ const Dashboard: React.FC = () => {
                   {/* Quick Actions */}
                   <div className="flex items-center gap-2">
                     <button
+                      onClick={() => setShowMpesa(true)}
+                      className="p-2 rounded-full hover:bg-white/10 text-white transition-colors"
+                      title="M-Pesa Services"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                      </svg>
+                    </button>
+                    
+                    <button
                       onClick={() => setShowBiometric(true)}
-                      className="p-2 rounded-full hover:bg-gray-700/50 text-gray-300 transition-colors"
+                      className="p-2 rounded-full hover:bg-white/10 text-white transition-colors"
                       title="Biometric Auth"
                     >
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -354,7 +367,7 @@ const Dashboard: React.FC = () => {
                         setQrMode('scan');
                         setShowQRCode(true);
                       }}
-                      className="p-2 rounded-full hover:bg-gray-700/50 text-gray-300 transition-colors"
+                      className="p-2 rounded-full hover:bg-white/10 text-white transition-colors"
                       title="QR Payment"
                     >
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -365,10 +378,10 @@ const Dashboard: React.FC = () => {
 
                   {/* User Avatar */}
                   <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-full bg-purple-600 flex items-center justify-center text-white font-medium">
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-r from-[#FF4081] to-[#FFD600] flex items-center justify-center text-white font-medium">
                       {currentUser?.name?.charAt(0) || 'U'}
                     </div>
-                    <span className="hidden md:block font-medium text-[#F1F1F1]">
+                    <span className="hidden md:block font-medium text-white">
                       {currentUser?.name?.split(' ')[0] || 'User'}
                     </span>
                   </div>
@@ -376,13 +389,8 @@ const Dashboard: React.FC = () => {
               </div>
             </div>
 
-            {/* Voice Commands Panel */}
-            <div className="px-4 lg:px-6 py-2 bg-gray-800/50 border-b border-gray-700/30">
-              <VoiceCommands onCommand={handleVoiceCommand} isEnabled={voiceEnabled} />
-            </div>
-
             {/* Page Content */}
-            <main className="flex-1 p-4 lg:p-6 overflow-hidden bg-[#0E0E0E]">
+            <main className="flex-1 p-4 lg:p-6 overflow-hidden">
               <div className="animate-fade-in">
                 <AnimatePresence mode="wait">
                   {renderScreen()}
@@ -391,6 +399,20 @@ const Dashboard: React.FC = () => {
             </main>
           </div>
         </div>
+
+        {/* M-Pesa Integration Modal */}
+        <AnimatePresence>
+          {showMpesa && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50"
+            >
+              <MpesaIntegration onClose={() => setShowMpesa(false)} />
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Biometric Auth Modal */}
         <AnimatePresence>
@@ -430,8 +452,6 @@ const Dashboard: React.FC = () => {
             </motion.div>
           )}
         </AnimatePresence>
-
-        {/* Install PWA prompt could be added here */}
       </div>
     </SecurityProvider>
   );
