@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { RealtimeChannel } from '@supabase/supabase-js';
 
@@ -111,7 +112,23 @@ export class RealTimeService {
       .channel(`presence_${roomId}`)
       .on('presence', { event: 'sync' }, () => {
         const newState = channel.presenceState();
-        const presenceList: PresenceData[] = Object.values(newState).flat() as PresenceData[];
+        const presenceList: PresenceData[] = [];
+        
+        // Convert presence state to our format
+        Object.values(newState).forEach((presences: any) => {
+          presences.forEach((presence: any) => {
+            if (presence.userId && presence.username) {
+              presenceList.push({
+                userId: presence.userId,
+                username: presence.username,
+                status: presence.status || 'online',
+                lastSeen: presence.lastSeen || new Date().toISOString(),
+                sessionId: presence.sessionId
+              });
+            }
+          });
+        });
+        
         this.presenceCallbacks.forEach(cb => cb(presenceList));
       })
       .on('presence', { event: 'join' }, ({ key, newPresences }) => {
@@ -356,6 +373,7 @@ export class RealTimeService {
   }
 
   onConnectionChange(callback: (status: boolean) => void): void {
+    // Use realtime connection events
     supabase.realtime.onOpen(() => callback(true));
     supabase.realtime.onClose(() => callback(false));
   }

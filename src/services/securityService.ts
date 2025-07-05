@@ -17,7 +17,7 @@ export class SecurityService {
         return { success: false, message: 'Invalid account number or PIN' };
       }
 
-      // Log MFA setup
+      // Log MFA setup using audit_logs
       await this.logSecurityEvent(userId, 'MFA_SETUP', 'Multi-factor authentication enabled');
       
       return { success: true, message: 'MFA setup successful' };
@@ -170,7 +170,7 @@ export class SecurityService {
     }
   }
 
-  async createFraudAlert(userId: string, type: string, description: string, severity: 'LOW' | 'MEDIUM' | 'HIGH'): Promise<void> {
+  async createFraudAlert(userId: string, type: 'SUSPICIOUS_AMOUNT' | 'MULTIPLE_ATTEMPTS' | 'UNUSUAL_PATTERN' | 'LARGE_LOAN_REQUEST', description: string, severity: 'LOW' | 'MEDIUM' | 'HIGH'): Promise<void> {
     try {
       await supabase
         .from('fraud_alerts')
@@ -232,15 +232,15 @@ export class SecurityService {
     }
   }
 
-  // Security Event Logging
+  // Security Event Logging (using audit_logs table)
   async logSecurityEvent(userId: string, eventType: string, description: string, ipAddress?: string): Promise<void> {
     try {
       await supabase
-        .from('security_events')
+        .from('audit_logs')
         .insert({
           user_id: userId,
-          event_type: eventType,
-          description,
+          action: eventType,
+          details: description,
           ip_address: ipAddress,
           timestamp: new Date().toISOString()
         });
@@ -260,19 +260,21 @@ export class SecurityService {
     return atob(encryptedData); // Simple base64 decoding for demo
   }
 
-  // Biometric Authentication
+  // Biometric Authentication (mock implementation using localStorage)
   async setupBiometric(userId: string, biometricType: 'fingerprint' | 'face' | 'voice', biometricData: string): Promise<{ success: boolean; message: string }> {
     try {
       const encryptedBiometric = await this.encryptSensitiveData(biometricData);
       
-      await supabase
-        .from('biometric_data')
-        .upsert({
-          user_id: userId,
-          biometric_type: biometricType,
-          biometric_hash: encryptedBiometric,
-          is_enabled: true
-        });
+      // Store in localStorage for demo purposes
+      const biometricStore = JSON.parse(localStorage.getItem('biometric_data') || '{}');
+      biometricStore[userId] = {
+        [biometricType]: {
+          hash: encryptedBiometric,
+          enabled: true,
+          created_at: new Date().toISOString()
+        }
+      };
+      localStorage.setItem('biometric_data', JSON.stringify(biometricStore));
 
       await this.logSecurityEvent(userId, 'BIOMETRIC_SETUP', `${biometricType} authentication enabled`);
       
@@ -285,19 +287,14 @@ export class SecurityService {
 
   async verifyBiometric(userId: string, biometricType: 'fingerprint' | 'face' | 'voice', biometricData: string): Promise<{ success: boolean; message: string }> {
     try {
-      const { data: biometric } = await supabase
-        .from('biometric_data')
-        .select('biometric_hash')
-        .eq('user_id', userId)
-        .eq('biometric_type', biometricType)
-        .eq('is_enabled', true)
-        .single();
+      const biometricStore = JSON.parse(localStorage.getItem('biometric_data') || '{}');
+      const userBiometrics = biometricStore[userId];
 
-      if (!biometric) {
+      if (!userBiometrics || !userBiometrics[biometricType] || !userBiometrics[biometricType].enabled) {
         return { success: false, message: 'Biometric authentication not set up' };
       }
 
-      const storedBiometric = await this.decryptSensitiveData(biometric.biometric_hash);
+      const storedBiometric = await this.decryptSensitiveData(userBiometrics[biometricType].hash);
       
       // In production, use proper biometric matching algorithms
       if (storedBiometric === biometricData) {
@@ -313,23 +310,24 @@ export class SecurityService {
     }
   }
 
-  // Device Fingerprinting
+  // Device Fingerprinting (mock implementation)
   async createDeviceFingerprint(userId: string, deviceInfo: any): Promise<string> {
     const fingerprint = btoa(JSON.stringify(deviceInfo));
     
     try {
-      await supabase
-        .from('device_fingerprints')
-        .upsert({
-          user_id: userId,
-          fingerprint,
-          user_agent: deviceInfo.userAgent,
-          screen_resolution: deviceInfo.screenResolution,
-          timezone: deviceInfo.timezone,
-          language: deviceInfo.language,
-          platform: deviceInfo.platform,
-          is_trusted: false
-        });
+      // Store in localStorage for demo
+      const deviceStore = JSON.parse(localStorage.getItem('device_fingerprints') || '{}');
+      deviceStore[fingerprint] = {
+        user_id: userId,
+        user_agent: deviceInfo.userAgent,
+        screen_resolution: deviceInfo.screenResolution,
+        timezone: deviceInfo.timezone,
+        language: deviceInfo.language,
+        platform: deviceInfo.platform,
+        is_trusted: false,
+        created_at: new Date().toISOString()
+      };
+      localStorage.setItem('device_fingerprints', JSON.stringify(deviceStore));
 
       return fingerprint;
     } catch (error) {
@@ -340,14 +338,10 @@ export class SecurityService {
 
   async validateDeviceFingerprint(userId: string, currentFingerprint: string): Promise<{ isTrusted: boolean; riskScore: number }> {
     try {
-      const { data: device } = await supabase
-        .from('device_fingerprints')
-        .select('is_trusted, created_at')
-        .eq('user_id', userId)
-        .eq('fingerprint', currentFingerprint)
-        .single();
+      const deviceStore = JSON.parse(localStorage.getItem('device_fingerprints') || '{}');
+      const device = deviceStore[currentFingerprint];
 
-      if (!device) {
+      if (!device || device.user_id !== userId) {
         return { isTrusted: false, riskScore: 0.8 };
       }
 
@@ -391,8 +385,8 @@ export class SecurityService {
         .eq('resolved', false);
 
       const { data: securityEvents } = await supabase
-        .from('security_events')
-        .select('event_type')
+        .from('audit_logs')
+        .select('action')
         .gte('timestamp', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
 
       const { data: activeSessions } = await supabase
@@ -466,246 +460,21 @@ export class SecurityService {
     }
   }
 
-  // Behavioral Analysis
-  async recordBehavioralPattern(userId: string, pattern: {
-    typingPattern: number[];
-    mousePattern: number[];
-    sessionDuration: number;
-    actionsPerMinute: number;
-  }): Promise<void> {
-    try {
-      await supabase
-        .from('behavioral_patterns')
-        .upsert({
-          user_id: userId,
-          typing_pattern: pattern.typingPattern,
-          mouse_pattern: pattern.mousePattern,
-          session_duration: pattern.sessionDuration,
-          actions_per_minute: pattern.actionsPerMinute,
-          last_updated: new Date().toISOString()
-        });
-    } catch (error) {
-      console.error('Failed to record behavioral pattern:', error);
-    }
+  // Calculate distance between two coordinates (for geo-fencing)
+  private calculateDistance(coord1: { lat: number; lng: number }, coord2: { lat: number; lng: number }): number {
+    const R = 6371; // Radius of the Earth in kilometers
+    const dLat = this.deg2rad(coord2.lat - coord1.lat);
+    const dLng = this.deg2rad(coord2.lng - coord1.lng);
+    const a = 
+      Math.sin(dLat/2) * Math.sin(dLat/2) +
+      Math.cos(this.deg2rad(coord1.lat)) * Math.cos(this.deg2rad(coord2.lat)) * 
+      Math.sin(dLng/2) * Math.sin(dLng/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c; // Distance in kilometers
   }
 
-  async analyzeBehavioralAnomaly(userId: string, currentPattern: any): Promise<{ isAnomaly: boolean; confidence: number }> {
-    try {
-      const { data: storedPattern } = await supabase
-        .from('behavioral_patterns')
-        .select('*')
-        .eq('user_id', userId)
-        .single();
-
-      if (!storedPattern) {
-        return { isAnomaly: false, confidence: 0 };
-      }
-
-      // Simple anomaly detection based on session duration and actions per minute
-      const durationDiff = Math.abs(currentPattern.sessionDuration - storedPattern.session_duration);
-      const actionsDiff = Math.abs(currentPattern.actionsPerMinute - storedPattern.actions_per_minute);
-
-      const durationThreshold = storedPattern.session_duration * 0.5;
-      const actionsThreshold = storedPattern.actions_per_minute * 0.5;
-
-      const isAnomaly = durationDiff > durationThreshold || actionsDiff > actionsThreshold;
-      const confidence = Math.min((durationDiff / durationThreshold + actionsDiff / actionsThreshold) / 2, 1);
-
-      if (isAnomaly) {
-        await this.logSecurityEvent(userId, 'BEHAVIORAL_ANOMALY', `Behavioral anomaly detected with confidence: ${confidence.toFixed(2)}`);
-      }
-
-      return { isAnomaly, confidence };
-    } catch (error) {
-      console.error('Behavioral analysis failed:', error);
-      return { isAnomaly: false, confidence: 0 };
-    }
-  }
-
-  // Geo-fencing
-  async setupGeoFencing(userId: string, allowedLocations: Array<{ lat: number; lng: number; radius: number }>): Promise<{ success: boolean; message: string }> {
-    try {
-      await supabase
-        .from('geo_fencing')
-        .upsert({
-          user_id: userId,
-          allowed_locations: allowedLocations,
-          is_enabled: true,
-          updated_at: new Date().toISOString()
-        });
-
-      await this.logSecurityEvent(userId, 'GEO_FENCING_SETUP', `Geo-fencing enabled with ${allowedLocations.length} locations`);
-      
-      return { success: true, message: 'Geo-fencing setup successful' };
-    } catch (error) {
-      console.error('Geo-fencing setup failed:', error);
-      return { success: false, message: 'Geo-fencing setup failed' };
-    }
-  }
-
-  async validateGeoLocation(userId: string, currentLocation: { lat: number; lng: number }): Promise<{ isAllowed: boolean; distance: number }> {
-    try {
-      const { data: geoFencing } = await supabase
-        .from('geo_fencing')
-        .select('allowed_locations, is_enabled')
-        .eq('user_id', userId)
-        .single();
-
-      if (!geoFencing || !geoFencing.is_enabled) {
-        return { isAllowed: true, distance: 0 };
-      }
-
-      const allowedLocations = geoFencing.allowed_locations as Array<{ lat: number; lng: number; radius: number }>;
-      
-      for (const location of allowedLocations) {
-        const distance = this.calculateDistance(currentLocation, location);
-        if (distance <= location.radius) {
-          return { isAllowed: true, distance };
-        }
-      }
-
-      // Find minimum distance to any allowed location
-      const minDistance = Math.min(...allowedLocations.map(loc => 
-        this.calculateDistance(currentLocation, loc)
-      ));
-
-      await this.logSecurityEvent(userId, 'GEO_VIOLATION', `Location access from unauthorized area. Distance: ${minDistance.toFixed(2)}km`);
-      
-      return { isAllowed: false, distance: minDistance };
-    } catch (error) {
-      console.error('Geo-location validation failed:', error);
-      return { isAllowed: true, distance: 0 };
-    }
-  }
-
-  private calculateDistance(point1: { lat: number; lng: number }, point2: { lat: number; lng: number }): number {
-    const R = 6371; // Earth's radius in kilometers
-    const dLat = this.toRadians(point2.lat - point1.lat);
-    const dLng = this.toRadians(point2.lng - point1.lng);
-    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos(this.toRadians(point1.lat)) * Math.cos(this.toRadians(point2.lat)) *
-      Math.sin(dLng / 2) * Math.sin(dLng / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c;
-  }
-
-  private toRadians(degrees: number): number {
-    return degrees * (Math.PI / 180);
-  }
-
-  // Time Restrictions
-  async setupTimeRestrictions(userId: string, restrictions: Array<{ day: number; startHour: number; endHour: number }>): Promise<{ success: boolean; message: string }> {
-    try {
-      await supabase
-        .from('time_restrictions')
-        .upsert({
-          user_id: userId,
-          restrictions: restrictions,
-          is_enabled: true,
-          updated_at: new Date().toISOString()
-        });
-
-      await this.logSecurityEvent(userId, 'TIME_RESTRICTIONS_SETUP', `Time restrictions enabled with ${restrictions.length} rules`);
-      
-      return { success: true, message: 'Time restrictions setup successful' };
-    } catch (error) {
-      console.error('Time restrictions setup failed:', error);
-      return { success: false, message: 'Time restrictions setup failed' };
-    }
-  }
-
-  async validateTimeRestrictions(userId: string): Promise<{ isAllowed: boolean; reason?: string }> {
-    try {
-      const { data: timeRestrictions } = await supabase
-        .from('time_restrictions')
-        .select('restrictions, is_enabled')
-        .eq('user_id', userId)
-        .single();
-
-      if (!timeRestrictions || !timeRestrictions.is_enabled) {
-        return { isAllowed: true };
-      }
-
-      const now = new Date();
-      const currentDay = now.getDay(); // 0 = Sunday, 1 = Monday, ...
-      const currentHour = now.getHours();
-
-      const restrictions = timeRestrictions.restrictions as Array<{ day: number; startHour: number; endHour: number }>;
-      
-      for (const restriction of restrictions) {
-        if (restriction.day === currentDay) {
-          if (currentHour >= restriction.startHour && currentHour <= restriction.endHour) {
-            return { isAllowed: true };
-          }
-        }
-      }
-
-      await this.logSecurityEvent(userId, 'TIME_RESTRICTION_VIOLATION', `Access attempt outside allowed hours`);
-      
-      return { 
-        isAllowed: false, 
-        reason: `Access not allowed at this time. Current time: ${currentHour}:00` 
-      };
-    } catch (error) {
-      console.error('Time restrictions validation failed:', error);
-      return { isAllowed: true };
-    }
-  }
-
-  // Real-time Threat Detection
-  async detectRealTimeThreats(userId: string, action: string, context: any): Promise<{ threats: string[]; riskScore: number; recommendations: string[] }> {
-    const threats: string[] = [];
-    const recommendations: string[] = [];
-    let riskScore = 0;
-
-    try {
-      // Check for rapid successive actions
-      if (context.rapidActions && context.rapidActions > 10) {
-        threats.push('Rapid successive actions detected');
-        recommendations.push('Implement rate limiting');
-        riskScore += 0.3;
-      }
-
-      // Check for unusual IP address
-      if (context.ipAddress && context.ipAddress !== context.lastKnownIp) {
-        threats.push('Access from new IP address');
-        recommendations.push('Verify user identity');
-        riskScore += 0.2;
-      }
-
-      // Check for unusual user agent
-      if (context.userAgent && context.userAgent !== context.lastKnownUserAgent) {
-        threats.push('Access from new device/browser');
-        recommendations.push('Device verification required');
-        riskScore += 0.2;
-      }
-
-      // Check for suspicious transaction patterns
-      if (action === 'TRANSACTION' && context.amount > context.averageTransaction * 3) {
-        threats.push('Transaction amount significantly higher than usual');
-        recommendations.push('Additional verification required');
-        riskScore += 0.4;
-      }
-
-      // Cap risk score at 1.0
-      riskScore = Math.min(riskScore, 1.0);
-
-      // Log threats if any detected
-      if (threats.length > 0) {
-        await this.logSecurityEvent(userId, 'REAL_TIME_THREAT', `Threats detected: ${threats.join(', ')}. Risk score: ${riskScore}`);
-      }
-
-      return { threats, riskScore, recommendations };
-    } catch (error) {
-      console.error('Real-time threat detection failed:', error);
-      return { threats: [], riskScore: 0, recommendations: [] };
-    }
-  }
-
-  // Card number masking utility
-  maskCardNumber(cardNumber: string): string {
-    if (!cardNumber || cardNumber.length < 16) return cardNumber;
-    return cardNumber.slice(0, 4) + '****' + '****' + cardNumber.slice(-4);
+  private deg2rad(deg: number): number {
+    return deg * (Math.PI/180);
   }
 }
 
