@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { RealtimeChannel } from '@supabase/supabase-js';
 
@@ -28,10 +27,11 @@ export class RealTimeService {
   private notificationCallbacks: ((notification: NotificationData) => void)[] = [];
   private presenceCallbacks: ((presence: PresenceData[]) => void)[] = [];
 
-  // Notification Management
+  // Notification Management (using localStorage for now)
   async subscribeToNotifications(userId: string, callback: (notification: NotificationData) => void): Promise<void> {
     this.notificationCallbacks.push(callback);
 
+    // Subscribe to transaction changes as notifications
     const channel = supabase
       .channel(`notifications_${userId}`)
       .on(
@@ -39,21 +39,25 @@ export class RealTimeService {
         {
           event: 'INSERT',
           schema: 'public',
-          table: 'notifications',
+          table: 'transactions',
           filter: `user_id=eq.${userId}`
         },
         (payload) => {
+          const transaction = payload.new as any;
           const notification: NotificationData = {
-            id: payload.new.id,
-            type: payload.new.type,
-            title: payload.new.title,
-            message: payload.new.message,
-            userId: payload.new.user_id,
-            timestamp: payload.new.created_at,
-            read: payload.new.read,
-            priority: payload.new.priority,
-            data: payload.new.data
+            id: `notif_${Date.now()}_${Math.random()}`,
+            type: 'transaction',
+            title: 'New Transaction',
+            message: `${transaction.type}: ${transaction.description}`,
+            userId: transaction.user_id,
+            timestamp: transaction.timestamp,
+            read: false,
+            priority: 'medium',
+            data: transaction
           };
+          
+          // Store in localStorage
+          this.storeNotification(notification);
           
           this.notificationCallbacks.forEach(cb => cb(notification));
         }
@@ -63,62 +67,40 @@ export class RealTimeService {
     this.channels.set(`notifications_${userId}`, channel);
   }
 
+  private storeNotification(notification: NotificationData): void {
+    const stored = JSON.parse(localStorage.getItem('notifications') || '[]');
+    stored.unshift(notification);
+    // Keep only last 50 notifications
+    stored.splice(50);
+    localStorage.setItem('notifications', JSON.stringify(stored));
+  }
+
   async sendNotification(notification: Omit<NotificationData, 'id' | 'timestamp' | 'read'>): Promise<void> {
-    try {
-      await supabase
-        .from('notifications')
-        .insert({
-          type: notification.type,
-          title: notification.title,
-          message: notification.message,
-          user_id: notification.userId,
-          priority: notification.priority,
-          data: notification.data,
-          read: false,
-          created_at: new Date().toISOString()
-        });
-    } catch (error) {
-      console.error('Failed to send notification:', error);
-    }
+    const fullNotification: NotificationData = {
+      ...notification,
+      id: `notif_${Date.now()}_${Math.random()}`,
+      timestamp: new Date().toISOString(),
+      read: false
+    };
+
+    // Store locally
+    this.storeNotification(fullNotification);
+    
+    // Trigger callbacks
+    this.notificationCallbacks.forEach(cb => cb(fullNotification));
   }
 
   async markNotificationAsRead(notificationId: string): Promise<void> {
-    try {
-      await supabase
-        .from('notifications')
-        .update({ read: true })
-        .eq('id', notificationId);
-    } catch (error) {
-      console.error('Failed to mark notification as read:', error);
-    }
+    const stored = JSON.parse(localStorage.getItem('notifications') || '[]');
+    const updated = stored.map((n: NotificationData) => 
+      n.id === notificationId ? { ...n, read: true } : n
+    );
+    localStorage.setItem('notifications', JSON.stringify(updated));
   }
 
   async getUnreadNotifications(userId: string): Promise<NotificationData[]> {
-    try {
-      const { data, error } = await supabase
-        .from('notifications')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('read', false)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-
-      return data.map(notification => ({
-        id: notification.id,
-        type: notification.type,
-        title: notification.title,
-        message: notification.message,
-        userId: notification.user_id,
-        timestamp: notification.created_at,
-        read: notification.read,
-        priority: notification.priority,
-        data: notification.data
-      }));
-    } catch (error) {
-      console.error('Failed to get unread notifications:', error);
-      return [];
-    }
+    const stored = JSON.parse(localStorage.getItem('notifications') || '[]');
+    return stored.filter((n: NotificationData) => n.userId === userId && !n.read);
   }
 
   // Presence Management
@@ -190,7 +172,7 @@ export class RealTimeService {
         {
           event: '*',
           schema: 'public',
-          table: 'system_status'
+          table: 'audit_logs'
         },
         (payload) => {
           callback({
@@ -204,7 +186,7 @@ export class RealTimeService {
     this.channels.set('system_status', channel);
   }
 
-  // Security Events Real-time
+  // Security Events Real-time (using audit_logs table)
   async subscribeToSecurityEvents(userId: string, callback: (event: any) => void): Promise<void> {
     const channel = supabase
       .channel(`security_${userId}`)
@@ -213,7 +195,7 @@ export class RealTimeService {
         {
           event: 'INSERT',
           schema: 'public',
-          table: 'security_events',
+          table: 'audit_logs',
           filter: `user_id=eq.${userId}`
         },
         (payload) => {
@@ -242,9 +224,9 @@ export class RealTimeService {
           this.sendNotification({
             type: 'fraud',
             title: 'Fraud Alert',
-            message: payload.new.description,
+            message: payload.new.description || 'Suspicious activity detected',
             userId: payload.new.user_id,
-            priority: payload.new.severity.toLowerCase() as 'low' | 'medium' | 'high',
+            priority: payload.new.severity?.toLowerCase() as 'low' | 'medium' | 'high' || 'high',
             data: payload.new
           });
           
@@ -265,8 +247,8 @@ export class RealTimeService {
         {
           event: 'INSERT',
           schema: 'public',
-          table: 'support_messages',
-          filter: `session_id=eq.${sessionId}`
+          table: 'audit_logs',
+          filter: `details=ilike.%support_chat_${sessionId}%`
         },
         (payload) => {
           callback(payload.new);
@@ -280,11 +262,10 @@ export class RealTimeService {
   async sendSupportMessage(sessionId: string, message: string, isFromUser: boolean): Promise<void> {
     try {
       await supabase
-        .from('support_messages')
+        .from('audit_logs')
         .insert({
-          session_id: sessionId,
-          message,
-          is_from_user: isFromUser,
+          action: 'SUPPORT_MESSAGE',
+          details: `support_chat_${sessionId}: ${message}`,
           timestamp: new Date().toISOString()
         });
     } catch (error) {

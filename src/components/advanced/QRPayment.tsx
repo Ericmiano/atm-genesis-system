@@ -365,12 +365,10 @@ const QRPayment: React.FC<QRPaymentProps> = ({ mode, onSuccess, onCancel }) => {
                           {isScanning ? 'Stop Scanning' : 'Start Camera'}
                         </Button>
                         
-                        <label className="flex-1">
-                          <Button variant="outline" className="w-full border-gray-600" asChild>
-                            <span>
-                              <Upload className="w-4 h-4 mr-2" />
-                              Upload Image
-                            </span>
+                        <div className="flex-1">
+                          <Button variant="outline" className="w-full border-gray-600">
+                            <Upload className="w-4 h-4 mr-2" />
+                            Upload Image
                           </Button>
                           <input
                             type="file"
@@ -378,7 +376,7 @@ const QRPayment: React.FC<QRPaymentProps> = ({ mode, onSuccess, onCancel }) => {
                             onChange={handleFileUpload}
                             className="hidden"
                           />
-                        </label>
+                        </div>
                       </div>
                       
                       {isScanning && (
