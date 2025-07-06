@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 
-type ThemeMode = 'light' | 'dark' | 'high-contrast' | 'auto';
+type ThemeMode = 'light' | 'dark' | 'auto';
 type AccentColor = 'wildberry' | 'purple' | 'orange' | 'green' | 'blue';
 
 interface EnhancedThemeContextType {
@@ -10,7 +10,6 @@ interface EnhancedThemeContextType {
   setAccentColor: (color: AccentColor) => void;
   isDarkMode: boolean;
   toggleDarkMode: () => void;
-  isHighContrast: boolean;
   fontSize: 'small' | 'medium' | 'large';
   setFontSize: (size: 'small' | 'medium' | 'large') => void;
 }
@@ -21,9 +20,9 @@ export function EnhancedThemeProvider({ children }: { children: ReactNode }) {
   const [mode, setMode] = useState<ThemeMode>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('enhanced-theme-mode') as ThemeMode;
-      return saved || 'light'; // Default to light mode with wildberry
+      return saved || 'auto';
     }
-    return 'light';
+    return 'auto';
   });
 
   const [accentColor, setAccentColor] = useState<AccentColor>(() => {
@@ -42,7 +41,6 @@ export function EnhancedThemeProvider({ children }: { children: ReactNode }) {
     return 'medium';
   });
 
-  // Calculate isDarkMode based on mode and system preference
   const [isDarkMode, setIsDarkMode] = useState(() => {
     if (mode === 'auto' && typeof window !== 'undefined') {
       return window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -50,14 +48,11 @@ export function EnhancedThemeProvider({ children }: { children: ReactNode }) {
     return mode === 'dark';
   });
 
-  const isHighContrast = mode === 'high-contrast';
-
   const toggleDarkMode = () => {
     const newMode = isDarkMode ? 'light' : 'dark';
     setMode(newMode);
   };
 
-  // Update isDarkMode when mode changes or system preference changes
   useEffect(() => {
     if (mode === 'auto') {
       const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
@@ -79,22 +74,17 @@ export function EnhancedThemeProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('enhanced-accent-color', accentColor);
     localStorage.setItem('enhanced-font-size', fontSize);
     
-    // Remove all theme classes
-    document.documentElement.classList.remove('dark', 'light', 'high-contrast', 'auto');
+    document.documentElement.classList.remove('dark', 'light');
     document.documentElement.classList.remove('accent-wildberry', 'accent-purple', 'accent-orange', 'accent-green', 'accent-blue');
     document.documentElement.classList.remove('font-small', 'font-medium', 'font-large');
     
-    // Add current theme classes
     document.documentElement.classList.add(isDarkMode ? 'dark' : 'light');
-    if (isHighContrast) document.documentElement.classList.add('high-contrast');
     document.documentElement.classList.add(`accent-${accentColor}`);
     document.documentElement.classList.add(`font-${fontSize}`);
 
-    // Update CSS variables for better color management
     const root = document.documentElement;
     
     if (isDarkMode) {
-      // Dark mode with deep navy theme
       root.style.setProperty('--primary-bg', '#0A0A0F');
       root.style.setProperty('--secondary-bg', '#1A1A2E');
       root.style.setProperty('--surface-bg', '#16213E');
@@ -104,23 +94,22 @@ export function EnhancedThemeProvider({ children }: { children: ReactNode }) {
       root.style.setProperty('--border-color', 'rgba(255, 255, 255, 0.1)');
       root.style.setProperty('--card-shadow', '0 8px 32px rgba(0, 0, 0, 0.3)');
     } else {
-      // Light mode with wildberry pink theme
-      root.style.setProperty('--primary-bg', '#FFFFFF');
-      root.style.setProperty('--secondary-bg', '#F8F9FA');
+      // Softer light mode with muted wildberry
+      root.style.setProperty('--primary-bg', '#FEFEFE');
+      root.style.setProperty('--secondary-bg', '#FAFAFA');
       root.style.setProperty('--surface-bg', '#FFFFFF');
-      root.style.setProperty('--primary-text', '#1F2937');
-      root.style.setProperty('--secondary-text', '#6B7280');
-      root.style.setProperty('--accent-color', '#E91E63');
-      root.style.setProperty('--border-color', 'rgba(0, 0, 0, 0.1)');
-      root.style.setProperty('--card-shadow', '0 4px 20px rgba(233, 30, 99, 0.1)');
+      root.style.setProperty('--primary-text', '#2D3748');
+      root.style.setProperty('--secondary-text', '#718096');
+      root.style.setProperty('--accent-color', '#D53F8C'); // Softer wildberry
+      root.style.setProperty('--border-color', 'rgba(0, 0, 0, 0.06)');
+      root.style.setProperty('--card-shadow', '0 4px 20px rgba(213, 63, 140, 0.08)');
     }
 
-    // Set accent color specific variables
     switch (accentColor) {
       case 'wildberry':
-        root.style.setProperty('--accent-primary', '#E91E63');
-        root.style.setProperty('--accent-secondary', '#9C27B0');
-        root.style.setProperty('--accent-tertiary', '#FF5722');
+        root.style.setProperty('--accent-primary', isDarkMode ? '#E91E63' : '#D53F8C');
+        root.style.setProperty('--accent-secondary', isDarkMode ? '#9C27B0' : '#B83280');
+        root.style.setProperty('--accent-tertiary', isDarkMode ? '#FF5722' : '#ED8936');
         break;
       case 'purple':
         root.style.setProperty('--accent-primary', '#9C27B0');
@@ -144,7 +133,6 @@ export function EnhancedThemeProvider({ children }: { children: ReactNode }) {
         break;
     }
 
-    // Set font size
     switch (fontSize) {
       case 'small':
         root.style.setProperty('--font-size-base', '0.875rem');
@@ -162,7 +150,7 @@ export function EnhancedThemeProvider({ children }: { children: ReactNode }) {
         root.style.setProperty('--font-size-xl', '1.5rem');
         break;
     }
-  }, [mode, accentColor, fontSize, isDarkMode, isHighContrast]);
+  }, [mode, accentColor, fontSize, isDarkMode]);
 
   return (
     <EnhancedThemeContext.Provider value={{
@@ -172,7 +160,6 @@ export function EnhancedThemeProvider({ children }: { children: ReactNode }) {
       setAccentColor,
       isDarkMode,
       toggleDarkMode,
-      isHighContrast,
       fontSize,
       setFontSize
     }}>

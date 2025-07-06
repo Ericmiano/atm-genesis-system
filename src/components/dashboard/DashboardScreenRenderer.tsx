@@ -2,16 +2,12 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { User } from '../../types/atm';
-import OverviewScreen from './OverviewScreen';
-import TransactionsScreen from './TransactionsScreen';
-import LoansScreen from './LoansScreen';
-import BillsScreen from './BillsScreen';
-import SettingsScreen from './SettingsScreen';
-import AnalyticsDashboard from './AnalyticsDashboard';
-import SystemMetricsScreen from './SystemMetricsScreen';
-import AdvancedSecurityDashboard from './AdvancedSecurityDashboard';
-import AccessibilitySettings from '../accessibility/AccessibilitySettings';
-import SecuritySettings from '../accessibility/SecuritySettings';
+import OverviewScreen from '../screens/OverviewScreen';
+import TransactionsScreen from '../screens/TransactionsScreen';
+import LoansScreen from '../screens/LoansScreen';
+import BillsScreen from '../screens/BillsScreen';
+import SettingsScreen from '../screens/SettingsScreen';
+import AdminPanel from '../admin/AdminPanel';
 
 interface DashboardScreenRendererProps {
   activeScreen: string;
@@ -40,84 +36,69 @@ const DashboardScreenRenderer: React.FC<DashboardScreenRendererProps> = ({
   onSaveSettings,
   setActiveScreen,
 }) => {
-  const screenVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.3 } },
-    exit: { opacity: 0, y: -20, transition: { duration: 0.2 } }
-  };
-
   const renderScreen = () => {
     switch (activeScreen) {
       case 'overview':
         return (
-          <motion.div key="overview" variants={screenVariants} initial="hidden" animate="visible" exit="exit">
-            <OverviewScreen stats={mockStats} currentUser={currentUser} />
-          </motion.div>
+          <OverviewScreen
+            user={currentUser}
+            stats={mockStats}
+            onQuickAction={(action) => console.log('Quick action:', action)}
+          />
         );
       case 'transactions':
         return (
-          <motion.div key="transactions" variants={screenVariants} initial="hidden" animate="visible" exit="exit">
-            <TransactionsScreen transactions={mockTransactions} onTransactionSuccess={onTransactionSuccess} />
-          </motion.div>
+          <TransactionsScreen
+            transactions={mockTransactions}
+            onTransactionSuccess={onTransactionSuccess}
+          />
         );
       case 'loans':
         return (
-          <motion.div key="loans" variants={screenVariants} initial="hidden" animate="visible" exit="exit">
-            <LoansScreen loans={mockLoans} onApplyNew={onApplyNewLoan} />
-          </motion.div>
+          <LoansScreen
+            loans={mockLoans}
+            onApplyNewLoan={onApplyNewLoan}
+          />
         );
       case 'bills':
         return (
-          <motion.div key="bills" variants={screenVariants} initial="hidden" animate="visible" exit="exit">
-            <BillsScreen bills={mockBills} onAddBill={onAddBill} />
-          </motion.div>
-        );
-      case 'analytics':
-        return (
-          <motion.div key="analytics" variants={screenVariants} initial="hidden" animate="visible" exit="exit">
-            <AnalyticsDashboard />
-          </motion.div>
-        );
-      case 'security':
-        return (
-          <motion.div key="security" variants={screenVariants} initial="hidden" animate="visible" exit="exit">
-            <SecuritySettings />
-          </motion.div>
-        );
-      case 'advanced-security':
-        return (
-          <motion.div key="advanced-security" variants={screenVariants} initial="hidden" animate="visible" exit="exit">
-            <AdvancedSecurityDashboard />
-          </motion.div>
-        );
-      case 'system-metrics':
-        return (
-          <motion.div key="system-metrics" variants={screenVariants} initial="hidden" animate="visible" exit="exit">
-            <SystemMetricsScreen />
-          </motion.div>
-        );
-      case 'accessibility':
-        return (
-          <motion.div key="accessibility" variants={screenVariants} initial="hidden" animate="visible" exit="exit">
-            <AccessibilitySettings isOpen={true} onClose={() => setActiveScreen('overview')} />
-          </motion.div>
+          <BillsScreen
+            bills={mockBills}
+            onAddBill={onAddBill}
+          />
         );
       case 'settings':
         return (
-          <motion.div key="settings" variants={screenVariants} initial="hidden" animate="visible" exit="exit">
-            <SettingsScreen currentUser={currentUser} onSaveSettings={onSaveSettings} />
-          </motion.div>
+          <SettingsScreen
+            user={currentUser}
+            onSaveSettings={onSaveSettings}
+          />
         );
+      case 'admin':
+        return <AdminPanel />;
       default:
         return (
-          <motion.div key="overview" variants={screenVariants} initial="hidden" animate="visible" exit="exit">
-            <OverviewScreen stats={mockStats} currentUser={currentUser} />
-          </motion.div>
+          <OverviewScreen
+            user={currentUser}
+            stats={mockStats}
+            onQuickAction={(action) => console.log('Quick action:', action)}
+          />
         );
     }
   };
 
-  return renderScreen();
+  return (
+    <motion.div
+      key={activeScreen}
+      initial={{ opacity: 0, x: 20 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: -20 }}
+      transition={{ duration: 0.3 }}
+      className="h-full"
+    >
+      {renderScreen()}
+    </motion.div>
+  );
 };
 
 export default DashboardScreenRenderer;
