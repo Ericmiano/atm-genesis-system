@@ -6,6 +6,7 @@ import { realTimeService } from '../services/realTimeService';
 import DashboardLayout from './dashboard/DashboardLayout';
 import DashboardScreenRenderer from './dashboard/DashboardScreenRenderer';
 import DashboardModals from './dashboard/DashboardModals';
+import EnhancedLoadingSpinner from './enhanced/EnhancedLoadingSpinner';
 
 const Dashboard: React.FC = () => {
   const [activeScreen, setActiveScreen] = useState('overview');
@@ -14,6 +15,7 @@ const Dashboard: React.FC = () => {
   const [showQRCode, setShowQRCode] = useState(false);
   const [showMpesa, setShowMpesa] = useState(false);
   const [qrMode, setQrMode] = useState<'generate' | 'scan'>('scan');
+  const [dashboardReady, setDashboardReady] = useState(false);
   const { currentUser } = useSupabaseATM();
 
   // Mock data for components
@@ -98,19 +100,40 @@ const Dashboard: React.FC = () => {
   useEffect(() => {
     console.log('Dashboard mounted');
     
-    if (currentUser) {
-      realTimeService.subscribeToTransactions(currentUser.id);
-      realTimeService.subscribeToSecurityEvents(currentUser.id, (event) => {
-        console.log('Security event:', event);
-      });
-      realTimeService.subscribeToFraudAlerts(currentUser.id, (alert) => {
-        console.log('Fraud alert:', alert);
-      });
-    }
+    // Initialize dashboard
+    const initializeDashboard = async () => {
+      try {
+        if (currentUser) {
+          // Set up real-time subscriptions safely
+          try {
+            realTimeService.subscribeToTransactions(currentUser.id);
+            realTimeService.subscribeToSecurityEvents(currentUser.id, (event) => {
+              console.log('Security event:', event);
+            });
+            realTimeService.subscribeToFraudAlerts(currentUser.id, (alert) => {
+              console.log('Fraud alert:', alert);
+            });
+          } catch (error) {
+            console.error('Error setting up real-time subscriptions:', error);
+          }
+        }
+        
+        setDashboardReady(true);
+      } catch (error) {
+        console.error('Error initializing dashboard:', error);
+        setDashboardReady(true);
+      }
+    };
+
+    initializeDashboard();
     
     return () => {
       console.log('Dashboard unmounted');
-      realTimeService.unsubscribeAll();
+      try {
+        realTimeService.unsubscribeAll();
+      } catch (error) {
+        console.error('Error cleaning up subscriptions:', error);
+      }
     };
   }, [currentUser]);
 
@@ -134,6 +157,19 @@ const Dashboard: React.FC = () => {
     setQrMode('scan');
     setShowQRCode(true);
   };
+
+  // Show loading while dashboard initializes
+  if (!dashboardReady) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center transition-all duration-300">
+        <EnhancedLoadingSpinner 
+          size="xl" 
+          variant="banking" 
+          message="Loading dashboard..."
+        />
+      </div>
+    );
+  }
 
   return (
     <SecurityProvider>

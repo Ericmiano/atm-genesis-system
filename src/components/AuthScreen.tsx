@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -5,7 +6,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { supabaseATMService } from '../services/supabaseATMService';
 import { supabase } from '@/integrations/supabase/client';
 import { Shield, CreditCard, Eye, EyeOff, User, Mail, Loader2 } from 'lucide-react';
 import { useSupabaseATM } from '../contexts/SupabaseATMContext';
@@ -69,11 +69,11 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
         
         if (error) {
           console.error('❌ Login error:', error);
-          setError(error.message);
+          setError(error.message || 'Login failed');
         } else if (data.user) {
           console.log('✅ Login successful:', data.user.email);
-          // Don't call onAuthSuccess immediately - let the auth state change handle it
-          console.log('✅ Auth state will handle navigation');
+          setSuccessMessage('Login successful! Redirecting...');
+          // Auth state change will handle navigation automatically
         }
       } else {
         console.log('📝 Attempting signup with:', email);
@@ -91,21 +91,19 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
         
         if (error) {
           console.error('❌ Signup error:', error);
-          setError(error.message);
+          setError(error.message || 'Signup failed');
         } else if (data.user) {
           console.log('✅ Signup successful:', data.user.email);
           if (data.user.email_confirmed_at) {
-            // User is immediately confirmed
-            console.log('✅ User confirmed, auth state will handle navigation');
+            setSuccessMessage('Account created successfully! Redirecting...');
           } else {
-            // User needs to confirm email
-            setError('Please check your email for verification link');
+            setSuccessMessage('Please check your email for verification link');
           }
         }
       }
     } catch (err) {
       console.error('❌ Auth error:', err);
-      setError('An unexpected error occurred');
+      setError('An unexpected error occurred. Please try again.');
     } finally {
       setLoading(false);
     }
