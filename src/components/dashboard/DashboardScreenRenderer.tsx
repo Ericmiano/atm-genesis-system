@@ -41,7 +41,7 @@ const DashboardScreenRenderer: React.FC<DashboardScreenRendererProps> = ({
       case 'overview':
         return (
           <OverviewScreen
-            user={currentUser}
+            currentUser={currentUser}
             stats={mockStats}
             onQuickAction={(action) => console.log('Quick action:', action)}
           />
@@ -57,7 +57,7 @@ const DashboardScreenRenderer: React.FC<DashboardScreenRendererProps> = ({
         return (
           <LoansScreen
             loans={mockLoans}
-            onApplyNewLoan={onApplyNewLoan}
+            onApplyNew={onApplyNewLoan}
           />
         );
       case 'bills':
@@ -70,7 +70,7 @@ const DashboardScreenRenderer: React.FC<DashboardScreenRendererProps> = ({
       case 'settings':
         return (
           <SettingsScreen
-            user={currentUser}
+            currentUser={currentUser}
             onSaveSettings={onSaveSettings}
           />
         );
@@ -79,7 +79,7 @@ const DashboardScreenRenderer: React.FC<DashboardScreenRendererProps> = ({
       default:
         return (
           <OverviewScreen
-            user={currentUser}
+            currentUser={currentUser}
             stats={mockStats}
             onQuickAction={(action) => console.log('Quick action:', action)}
           />
