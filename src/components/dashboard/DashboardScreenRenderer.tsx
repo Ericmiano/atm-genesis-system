@@ -43,7 +43,6 @@ const DashboardScreenRenderer: React.FC<DashboardScreenRendererProps> = ({
           <OverviewScreen
             currentUser={currentUser}
             stats={mockStats}
-            onQuickAction={(action) => console.log('Quick action:', action)}
           />
         );
       case 'transactions':
@@ -81,7 +80,6 @@ const DashboardScreenRenderer: React.FC<DashboardScreenRendererProps> = ({
           <OverviewScreen
             currentUser={currentUser}
             stats={mockStats}
-            onQuickAction={(action) => console.log('Quick action:', action)}
           />
         );
     }
