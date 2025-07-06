@@ -137,6 +137,28 @@ const Dashboard: React.FC = () => {
     };
   }, [currentUser]);
 
+  // Handle mobile sidebar events
+  useEffect(() => {
+    const handleSetSidebarOpen = (event: CustomEvent) => {
+      setIsSidebarOpen(event.detail);
+    };
+
+    window.addEventListener('setSidebarOpen', handleSetSidebarOpen as EventListener);
+    return () => window.removeEventListener('setSidebarOpen', handleSetSidebarOpen as EventListener);
+  }, []);
+
+  // Auto-close sidebar on large screens
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 1024) {
+        setIsSidebarOpen(false);
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const handleTransactionSuccess = () => {
     console.log('Transaction successful');
   };

@@ -67,7 +67,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
             onShowQRCode={onShowQRCode}
           />
 
-          <main className="flex-1 p-4 lg:p-6 overflow-hidden">
+          <main className="flex-1 p-2 sm:p-4 lg:p-6 overflow-hidden">
             <motion.div 
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
