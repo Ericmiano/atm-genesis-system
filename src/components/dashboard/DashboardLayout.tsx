@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSupabaseATM } from '../../contexts/SupabaseATMContext';
@@ -32,8 +33,8 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   return (
     <div className={`min-h-screen transition-all duration-300 ${
       isDarkMode 
-        ? 'bg-gradient-to-br from-dark-primary via-dark-secondary to-dark-accent text-white' 
-        : 'bg-gradient-to-br from-neutral-50 via-white to-neutral-100 text-neutral-900'
+        ? 'bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white' 
+        : 'bg-gradient-to-br from-gray-50 via-white to-gray-100 text-gray-900'
     }`}>
       {/* Mobile Sidebar Overlay */}
       <AnimatePresence>

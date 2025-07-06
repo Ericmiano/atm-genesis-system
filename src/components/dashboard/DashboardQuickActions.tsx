@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useEnhancedTheme } from '../../contexts/EnhancedThemeContext';
 import { Button } from '@/components/ui/button';
@@ -23,20 +24,20 @@ const DashboardQuickActions: React.FC<DashboardQuickActionsProps> = ({
       icon: Smartphone,
       label: 'M-Pesa',
       onClick: onShowMpesa,
-      color: 'primary',
-      badge: 'New'
+      color: 'from-green-500 to-green-600',
+      badge: 'Popular'
     },
     {
       icon: Fingerprint,
       label: 'Biometric',
       onClick: onShowBiometric,
-      color: 'secondary'
+      color: 'from-blue-500 to-blue-600'
     },
     {
       icon: QrCode,
       label: 'QR Code',
       onClick: onShowQRCode,
-      color: 'accent'
+      color: 'from-purple-500 to-purple-600'
     }
   ];
 
@@ -54,27 +55,23 @@ const DashboardQuickActions: React.FC<DashboardQuickActionsProps> = ({
                 "p-2 rounded-xl transition-all duration-300 group",
                 "hover:scale-105 hover:shadow-lg",
                 isDarkMode 
-                  ? "hover:bg-dark-surface/50" 
-                  : "hover:bg-neutral-100"
+                  ? "hover:bg-gray-800/50" 
+                  : "hover:bg-gray-100"
               )}
               title={action.label}
             >
               <div className={cn(
-                "p-1.5 rounded-lg transition-colors duration-300",
-                isDarkMode 
-                  ? "group-hover:bg-dark-surface" 
-                  : "group-hover:bg-neutral-200"
+                "p-2 rounded-lg transition-all duration-300 bg-gradient-to-r",
+                action.color,
+                "group-hover:shadow-lg text-white"
               )}>
-                <Icon className={cn(
-                  "w-4 h-4 transition-colors duration-300",
-                  isDarkMode ? "text-muted-foreground" : "text-neutral-600"
-                )} />
+                <Icon className="w-4 h-4" />
               </div>
             </Button>
             {action.badge && (
               <Badge className={cn(
                 "absolute -top-1 -right-1 px-1.5 py-0.5 text-xs font-medium",
-                "bg-gradient-to-r from-primary to-secondary text-white"
+                "bg-gradient-to-r from-orange-400 to-red-500 text-white shadow-lg"
               )}>
                 {action.badge}
               </Badge>

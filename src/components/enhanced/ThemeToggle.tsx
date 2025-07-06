@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useEnhancedTheme } from '../../contexts/EnhancedThemeContext';
 import { Button } from '@/components/ui/button';
@@ -14,60 +15,67 @@ const ThemeToggle: React.FC = () => {
   ] as const;
 
   return (
-    <div className="flex items-center gap-2">
-      {themes.map((theme) => {
-        const Icon = theme.icon;
-        const isActive = mode === theme.id;
-        
-        return (
-          <Button
-            key={theme.id}
-            variant="ghost"
-            size="sm"
-            onClick={() => setMode(theme.id)}
-            className={cn(
-              "relative p-2 rounded-xl transition-all duration-300 group",
-              "hover:scale-105 hover:shadow-lg",
-              isActive 
-                ? cn(
-                    "bg-gradient-to-r from-primary/10 to-secondary/10",
-                    "border border-primary/20 text-primary font-semibold",
-                    "shadow-lg shadow-primary/10"
-                  )
-                : cn(
-                    "hover:bg-muted/50 text-muted-foreground hover:text-foreground"
-                  )
-            )}
-            title={`Switch to ${theme.label} mode`}
-          >
-            <div className={cn(
-              "p-1.5 rounded-lg transition-colors duration-300",
-              isActive 
-                ? "bg-gradient-to-br from-primary to-secondary text-white shadow-lg" 
-                : "group-hover:bg-muted/50"
-            )}>
+    <div className="flex items-center gap-1">
+      {/* Theme Mode Selector */}
+      <div className={cn(
+        "flex items-center rounded-lg p-1 transition-all duration-300",
+        isDarkMode ? "bg-gray-800/50" : "bg-gray-100"
+      )}>
+        {themes.map((theme) => {
+          const Icon = theme.icon;
+          const isActive = mode === theme.id;
+          
+          return (
+            <Button
+              key={theme.id}
+              variant="ghost"
+              size="sm"
+              onClick={() => setMode(theme.id)}
+              className={cn(
+                "p-2 rounded-md transition-all duration-300",
+                isActive 
+                  ? cn(
+                      "bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg",
+                      "transform scale-105"
+                    )
+                  : cn(
+                      "hover:bg-opacity-50",
+                      isDarkMode ? "hover:bg-gray-700" : "hover:bg-gray-200"
+                    )
+              )}
+              title={`Switch to ${theme.label} mode`}
+            >
               <Icon className="w-4 h-4" />
-            </div>
-          </Button>
-        );
-      })}
+            </Button>
+          );
+        })}
+      </div>
       
-      {/* Quick Toggle */}
+      {/* Quick Toggle Switch */}
       <Button
         variant="ghost"
         size="sm"
         onClick={toggleDarkMode}
         className={cn(
-          "relative w-12 h-6 rounded-full p-0 transition-all duration-300",
-          "bg-gradient-to-r from-primary to-secondary shadow-lg",
-          "hover:scale-105 hover:shadow-xl"
+          "relative w-12 h-6 rounded-full p-0 transition-all duration-300 ml-2",
+          "bg-gradient-to-r hover:shadow-lg",
+          isDarkMode 
+            ? "from-purple-600 to-blue-600" 
+            : "from-yellow-400 to-orange-500"
         )}
         title="Quick toggle theme"
       >
         <div className={cn(
-          "absolute w-4 h-4 bg-white rounded-full transition-transform duration-300 shadow-md top-1",
+          "absolute w-4 h-4 bg-white rounded-full transition-all duration-300 shadow-md top-1",
+          "flex items-center justify-center",
           isDarkMode ? "translate-x-7" : "translate-x-1"
-        )} />
+        )}>
+          {isDarkMode ? (
+            <Moon className="w-2 h-2 text-purple-600" />
+          ) : (
+            <Sun className="w-2 h-2 text-orange-500" />
+          )}
+        </div>
       </Button>
     </div>
   );

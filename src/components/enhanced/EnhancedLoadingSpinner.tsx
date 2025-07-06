@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Loader2, Wallet, CreditCard, Shield, Zap } from 'lucide-react';
@@ -60,7 +61,7 @@ const EnhancedLoadingSpinner: React.FC<EnhancedLoadingSpinnerProps> = ({
         >
           <Icon className={cn(
             sizeClasses[size],
-            "text-primary animate-spin"
+            "text-blue-500 animate-spin"
           )} />
         </motion.div>
 
@@ -69,7 +70,7 @@ const EnhancedLoadingSpinner: React.FC<EnhancedLoadingSpinnerProps> = ({
           className={cn(
             "absolute inset-0 rounded-full border-2 border-transparent",
             sizeClasses[size],
-            "border-t-primary/30"
+            "border-t-blue-500/30"
           )}
           animate={{ rotate: -360 }}
           transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
@@ -80,7 +81,7 @@ const EnhancedLoadingSpinner: React.FC<EnhancedLoadingSpinnerProps> = ({
           className={cn(
             "absolute inset-0 rounded-full blur-sm",
             sizeClasses[size],
-            "bg-gradient-to-r from-primary/20 to-secondary/20"
+            "bg-gradient-to-r from-blue-500/20 to-purple-500/20"
           )}
           animate={{ 
             scale: [1, 1.2, 1],
@@ -94,7 +95,7 @@ const EnhancedLoadingSpinner: React.FC<EnhancedLoadingSpinnerProps> = ({
           className={cn(
             "absolute inset-0 rounded-full",
             sizeClasses[size],
-            "bg-gradient-to-r from-primary/10 to-secondary/10"
+            "bg-gradient-to-r from-blue-500/10 to-purple-500/10"
           )}
           animate={{ 
             scale: [1, 1.5, 1],
@@ -109,10 +110,10 @@ const EnhancedLoadingSpinner: React.FC<EnhancedLoadingSpinnerProps> = ({
         <div className="w-full max-w-xs">
           <div className={cn(
             "rounded-full h-2 transition-colors duration-300",
-            isDarkMode ? "bg-neutral-700" : "bg-neutral-200"
+            isDarkMode ? "bg-gray-700" : "bg-gray-200"
           )}>
             <motion.div
-              className="bg-gradient-to-r from-primary to-secondary h-2 rounded-full"
+              className="bg-gradient-to-r from-blue-500 to-purple-600 h-2 rounded-full"
               initial={{ width: 0 }}
               animate={{ width: `${progress}%` }}
               transition={{ duration: 0.5 }}
@@ -120,7 +121,7 @@ const EnhancedLoadingSpinner: React.FC<EnhancedLoadingSpinnerProps> = ({
           </div>
           <p className={cn(
             "text-xs mt-1 text-center transition-colors duration-300",
-            isDarkMode ? "text-muted-foreground" : "text-neutral-500"
+            isDarkMode ? "text-gray-400" : "text-gray-500"
           )}>
             {progress}%
           </p>
@@ -134,7 +135,7 @@ const EnhancedLoadingSpinner: React.FC<EnhancedLoadingSpinnerProps> = ({
           animate={{ opacity: 1, y: 0 }}
           className={cn(
             "text-sm text-center font-medium transition-colors duration-300",
-            isDarkMode ? "text-white" : "text-neutral-900"
+            isDarkMode ? "text-white" : "text-gray-900"
           )}
         >
           {message}
@@ -145,12 +146,12 @@ const EnhancedLoadingSpinner: React.FC<EnhancedLoadingSpinnerProps> = ({
       {variant === 'banking' && (
         <div className={cn(
           "flex items-center space-x-2 text-xs transition-colors duration-300",
-          isDarkMode ? "text-muted-foreground" : "text-neutral-500"
+          isDarkMode ? "text-gray-400" : "text-gray-500"
         )}>
           <motion.div
             animate={{ opacity: [0.5, 1, 0.5] }}
             transition={{ duration: 1.5, repeat: Infinity }}
-            className="text-primary"
+            className="text-blue-500"
           >
             <CreditCard className="w-4 h-4" />
           </motion.div>
@@ -162,12 +163,12 @@ const EnhancedLoadingSpinner: React.FC<EnhancedLoadingSpinnerProps> = ({
       {variant === 'secure' && (
         <div className={cn(
           "flex items-center space-x-2 text-xs transition-colors duration-300",
-          isDarkMode ? "text-muted-foreground" : "text-neutral-500"
+          isDarkMode ? "text-gray-400" : "text-gray-500"
         )}>
           <motion.div
             animate={{ opacity: [0.5, 1, 0.5] }}
             transition={{ duration: 1.5, repeat: Infinity }}
-            className="text-secondary"
+            className="text-purple-500"
           >
             <Shield className="w-4 h-4" />
           </motion.div>
@@ -179,12 +180,12 @@ const EnhancedLoadingSpinner: React.FC<EnhancedLoadingSpinnerProps> = ({
       {variant === 'default' && (
         <div className={cn(
           "flex items-center space-x-2 text-xs transition-colors duration-300",
-          isDarkMode ? "text-muted-foreground" : "text-neutral-500"
+          isDarkMode ? "text-gray-400" : "text-gray-500"
         )}>
           <motion.div
             animate={{ opacity: [0.5, 1, 0.5] }}
             transition={{ duration: 1.5, repeat: Infinity }}
-            className="text-accent"
+            className="text-orange-500"
           >
             <Zap className="w-4 h-4" />
           </motion.div>
