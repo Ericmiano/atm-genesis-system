@@ -2,11 +2,11 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { User } from '../../types/atm';
-import OverviewScreen from '../screens/OverviewScreen';
-import TransactionsScreen from '../screens/TransactionsScreen';
-import LoansScreen from '../screens/LoansScreen';
-import BillsScreen from '../screens/BillsScreen';
-import SettingsScreen from '../screens/SettingsScreen';
+import OverviewScreen from './OverviewScreen';
+import TransactionsScreen from './TransactionsScreen';
+import LoansScreen from './LoansScreen';
+import BillsScreen from './BillsScreen';
+import SettingsScreen from './SettingsScreen';
 import AdminPanel from '../admin/AdminPanel';
 
 interface DashboardScreenRendererProps {

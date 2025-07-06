@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { LineChart, Line, AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { TrendingUp, TrendingDown, DollarSign, Users, Activity, Download } from 'lucide-react';
-import { analyticsService } from '../../services/analyticsService';
+import { AnalyticsService } from '../../services/analyticsService';
 
 const AnalyticsDashboard: React.FC = () => {
   const [timeRange, setTimeRange] = useState('7d');
@@ -35,9 +35,9 @@ const AnalyticsDashboard: React.FC = () => {
         }
 
         const [transactionData, performanceData, businessData] = await Promise.all([
-          analyticsService.getTransactionAnalytics(startDate, endDate),
-          analyticsService.getPerformanceMetrics(timeRange),
-          analyticsService.getBusinessIntelligence()
+          AnalyticsService.getTransactionAnalytics(startDate, endDate),
+          AnalyticsService.getPerformanceMetrics(timeRange),
+          AnalyticsService.getBusinessIntelligence()
         ]);
 
         setAnalytics({
@@ -87,7 +87,9 @@ const AnalyticsDashboard: React.FC = () => {
       <div className="space-y-4">
         {[...Array(6)].map((_, i) => (
           <Card key={i} className="animate-pulse">
-            <CardContent className="h-40 bg-gray-100 dark:bg-gray-800 rounded" />
+            <CardContent className="h-40">
+              <div className="bg-gray-100 dark:bg-gray-800 rounded h-full" />
+            </CardContent>
           </Card>
         ))}
       </div>
